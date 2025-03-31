@@ -1,0 +1,41 @@
+name: vocabulary_app
+description: 이미지에서 영어 단어와 예문을 자동으로 추출하는 앱
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ">=2.17.0 <3.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.2
+  image_picker: ^0.8.5+3  # 이미지 선택/촬영
+  google_ml_kit: ^0.14.0  # OCR 텍스트 인식
+  hive: ^2.2.3          # 로컬 데이터베이스
+  hive_flutter: ^1.1.0  # Hive를 Flutter에서 사용
+  path_provider: ^2.0.11 # 파일 시스템 경로
+  share_plus: ^4.0.10   # 공유 기능
+  flutter_tts: ^3.5.3   # 텍스트 음성 변환
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^2.0.0
+  hive_generator: ^1.1.3
+  build_runner: ^2.2.0
+
+flutter:
+  uses-material-design: true
+  
+  assets:
+    - assets/images/
+  
+  fonts:
+    - family: Pretendard
+      fonts:
+        - asset: assets/fonts/Pretendard-Regular.ttf
+        - asset: assets/fonts/Pretendard-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Pretendard-Bold.ttf
+          weight: 700

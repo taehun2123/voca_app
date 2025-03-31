@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'screens/home_screen.dart';
+import 'services/api_key_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -9,6 +10,11 @@ void main() async {
   await Hive.initFlutter();
   await Hive.openBox('wordBox');
   await Hive.openBox('dayCollectionBox');
+  await Hive.openBox('apiKeyBox');
+  
+  // API 키 서비스 초기화
+  final apiKeyService = ApiKeyService();
+  await apiKeyService.init();
   
   runApp(const MyApp());
 }

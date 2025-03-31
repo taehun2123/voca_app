@@ -17,6 +17,7 @@ dependencies:
   path_provider: ^2.0.11 # 파일 시스템 경로
   share_plus: ^4.0.10   # 공유 기능
   flutter_tts: ^3.5.3   # 텍스트 음성 변환
+  flutter_secure_storage: ^4.2.1
 
 dev_dependencies:
   flutter_test:

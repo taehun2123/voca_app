@@ -3,10 +3,13 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../model/word_entry.dart';
 import '../services/ocr_service.dart';
+import '../services/openai_vision_service.dart';
 import '../services/storage_service.dart';
 import '../services/tts_service.dart';
+import '../services/api_key_service.dart';
 import 'flash_card_screen.dart';
 import 'quiz_screen.dart';
+import 'settings_screen.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({Key? key}) : super(key: key);
@@ -20,6 +23,10 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   final OcrService _ocrService = OcrService();
   final StorageService _storageService = StorageService();
   final TtsService _ttsService = TtsService();
+  final ApiKeyService _apiKeyService = ApiKeyService();
+  
+  OpenAIVisionService? _openAIService;
+  bool _isUsingOpenAI = false;
   
   bool _isProcessing = false;
   List<File> _batchImages = [];
@@ -33,6 +40,17 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
     _loadSavedWords();
+    _initializeOpenAI();
+  }
+  
+  Future<void> _initializeOpenAI() async {
+    final apiKey = await _apiKeyService.getOpenAIApiKey();
+    if (apiKey != null && apiKey.isNotEmpty) {
+      _openAIService = OpenAIVisionService(apiKey: apiKey);
+      setState(() {
+        _isUsingOpenAI = true;
+      });
+    }
   }
   
   @override
@@ -142,6 +160,25 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   }
   
   Future<void> _processBatchImages() async {
+    // API 키 확인
+    if (_isUsingOpenAI && _openAIService == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('OpenAI API 키가 설정되지 않았습니다. 설정 화면에서 API 키를 입력해주세요.'),
+          action: SnackBarAction(
+            label: '설정',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => SettingsScreen()),
+              ).then((_) => _initializeOpenAI());
+            },
+          ),
+        ),
+      );
+      return;
+    }
+    
     setState(() {
       _isProcessing = true;
     });
@@ -155,14 +192,29 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     // 각 이미지 처리
     List<WordEntry> allWords = [];
     for (var img in _batchImages) {
-      final words = await _ocrService.extractWordsFromImage(img);
-      
-      // 현재 DAY 설정
-      for (var word in words) {
-        word = word.copyWith(day: _currentDay);
+      try {
+        List<WordEntry> words;
+        
+        if (_isUsingOpenAI && _openAIService != null) {
+          // OpenAI 비전 API 사용
+          words = await _openAIService!.extractWordsFromImage(img);
+        } else {
+          // 기존 OCR 서비스 사용
+          words = await _ocrService.extractWordsFromImage(img);
+        }
+        
+        // 현재 DAY 설정
+        for (var word in words) {
+          word = word.copyWith(day: _currentDay);
+        }
+        
+        allWords.addAll(words);
+      } catch (e) {
+        print('이미지 처리 중 오류: $e');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('이미지 처리 중 오류가 발생했습니다: ${e.toString()}')),
+        );
       }
-      
-      allWords.addAll(words);
     }
     
     // 중복 제거 (같은 단어는 하나만 저장)
@@ -243,6 +295,18 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     return Scaffold(
       appBar: AppBar(
         title: const Text('영어 단어 학습'),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.settings),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => SettingsScreen()),
+              ).then((_) => _initializeOpenAI());
+            },
+            tooltip: '설정',
+          ),
+        ],
         bottom: TabBar(
           controller: _tabController,
           tabs: const [
@@ -320,12 +384,78 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
             flex: 2,
             child: Container(
               padding: const EdgeInsets.all(20),
-              child: const Center(
-                child: Text(
-                  '교재나 단어장 이미지를 촬영하거나 갤러리에서 선택하세요\n(최대 6장까지 한 번에 처리 가능)',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 18),
-                ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Text(
+                    '교재나 단어장 이미지를 촬영하거나 갤러리에서 선택하세요\n(최대 6장까지 한 번에 처리 가능)',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 18),
+                  ),
+                  SizedBox(height: 20),
+                  if (_isUsingOpenAI)
+                    Card(
+                      color: Colors.green[50],
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Column(
+                          children: [
+                            Icon(Icons.check_circle, color: Colors.green),
+                            SizedBox(height: 8),
+                            Text(
+                              'OpenAI Vision API 사용 중',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.green[800],
+                              ),
+                            ),
+                            SizedBox(height: 4),
+                            Text(
+                              '이미지에서 더 정확한 단어 인식이 가능합니다',
+                              style: TextStyle(fontSize: 14),
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                  else
+                    Card(
+                      color: Colors.orange[50],
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Column(
+                          children: [
+                            Icon(Icons.info_outline, color: Colors.orange),
+                            SizedBox(height: 8),
+                            Text(
+                              '기본 OCR 사용 중',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.orange[800],
+                              ),
+                            ),
+                            SizedBox(height: 4),
+                            Text(
+                              '더 나은 인식을 위해 설정에서 OpenAI API 키를 설정하세요',
+                              style: TextStyle(fontSize: 14),
+                              textAlign: TextAlign.center,
+                            ),
+                            SizedBox(height: 8),
+                            TextButton(
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(builder: (context) => SettingsScreen()),
+                                ).then((_) => _initializeOpenAI());
+                              },
+                              child: Text('API 키 설정하기'),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                ],
               ),
             ),
           ),

@@ -57,6 +57,7 @@ class OpenAIVisionService {
                 
                 중요: 이미지에 보이는 모든 영어 단어와 한국어 뜻 쌍을 추출해주세요.
                 영어 단어가 없거나 한국어 뜻이 없는 경우는 생략합니다.
+                발음 기호가 있으면 정확하게 추출해주세요.
                 발음 기호가 없는 경우 pronunciation은 빈 문자열로 설정합니다.
                 """
               },
@@ -76,15 +77,17 @@ class OpenAIVisionService {
       final response = await http.post(
         Uri.parse(_apiUrl),
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/json; charset=utf-8',
           'Authorization': 'Bearer $_apiKey',
         },
         body: payload,
       );
 
-      // 응답 처리
+      // 응답 처리 - 명시적으로 UTF-8 디코딩
       if (response.statusCode == 200) {
-        final responseData = jsonDecode(response.body);
+        // UTF-8 인코딩 처리를 명시적으로 적용
+        final String decodedResponse = utf8.decode(response.bodyBytes);
+        final responseData = jsonDecode(decodedResponse);
         final content = responseData['choices'][0]['message']['content'];
         
         // JSON 부분 추출 (경우에 따라 전체 텍스트 중 JSON만 파싱해야 할 수 있음)
@@ -103,7 +106,9 @@ class OpenAIVisionService {
           return [];
         }
       } else {
-        print('OpenAI API 오류: ${response.statusCode} - ${response.body}');
+        // 오류 응답도 UTF-8로 디코딩
+        final String errorResponse = utf8.decode(response.bodyBytes);
+        print('OpenAI API 오류: ${response.statusCode} - $errorResponse');
         return [];
       }
     } catch (e) {

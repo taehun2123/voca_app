@@ -224,23 +224,38 @@ class _TestDemoScreenState extends State<TestDemoScreen> {
                                           fontSize: 18,
                                         ),
                                       ),
-                                      subtitle: Text(word.meaning),
+                                      subtitle: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          if (word.pronunciation.isNotEmpty)
+                                            Padding(
+                                              padding: const EdgeInsets.only(top: 2.0, bottom: 2.0),
+                                              child: Text(
+                                                word.pronunciation,
+                                                style: TextStyle(
+                                                  fontFamily: 'Roboto',  // 발음 기호에 적합한 폰트
+                                                  fontSize: 14.0,
+                                                  fontStyle: FontStyle.italic,
+                                                  letterSpacing: 0.2,
+                                                  color: Colors.grey[700],
+                                                ),
+                                              ),
+                                            ),
+                                          Text(
+                                            word.meaning,
+                                            style: TextStyle(
+                                              fontSize: 14.0,
+                                              color: Colors.grey[900],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
                                       children: [
                                         Padding(
                                           padding: EdgeInsets.all(16),
                                           child: Column(
                                             crossAxisAlignment: CrossAxisAlignment.start,
                                             children: [
-                                              if (word.pronunciation.isNotEmpty) ...[
-                                                Text(
-                                                  '발음: ${word.pronunciation}',
-                                                  style: TextStyle(
-                                                    fontStyle: FontStyle.italic,
-                                                    color: Colors.grey[700],
-                                                  ),
-                                                ),
-                                                SizedBox(height: 8),
-                                              ],
                                               if (word.examples.isNotEmpty) ...[
                                                 Text(
                                                   '예문:',
@@ -249,7 +264,13 @@ class _TestDemoScreenState extends State<TestDemoScreen> {
                                                 SizedBox(height: 4),
                                                 ...word.examples.map((example) => Padding(
                                                       padding: EdgeInsets.only(bottom: 4),
-                                                      child: Text('• $example'),
+                                                      child: Text(
+                                                        '• $example',
+                                                        style: TextStyle(
+                                                          fontSize: 14,
+                                                          height: 1.4,
+                                                        ),
+                                                      ),
                                                     )),
                                                 SizedBox(height: 8),
                                               ],
@@ -261,7 +282,13 @@ class _TestDemoScreenState extends State<TestDemoScreen> {
                                                 SizedBox(height: 4),
                                                 ...word.commonPhrases.map((phrase) => Padding(
                                                       padding: EdgeInsets.only(bottom: 4),
-                                                      child: Text('• $phrase'),
+                                                      child: Text(
+                                                        '• $phrase',
+                                                        style: TextStyle(
+                                                          fontSize: 14,
+                                                          height: 1.4,
+                                                        ),
+                                                      ),
                                                     )),
                                               ],
                                             ],
@@ -278,10 +305,8 @@ class _TestDemoScreenState extends State<TestDemoScreen> {
       floatingActionButton: _hasApiKey && !_isLoading && (_extractedWords != null && _extractedWords!.isNotEmpty)
           ? FloatingActionButton.extended(
               onPressed: () {
-                // TODO: 추출된 단어를 단어장에 저장하는 기능 구현
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('향후 업데이트에서 단어 저장 기능이 추가될 예정입니다.')),
-                );
+                // 단어장에 저장하는 기능
+                Navigator.pop(context, _extractedWords);
               },
               icon: Icon(Icons.save),
               label: Text('단어장에 추가'),

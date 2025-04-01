@@ -1,12 +1,14 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:vocabulary_app/screens/word_edit_screen.dart';
 import '../model/word_entry.dart';
 import '../services/ocr_service.dart';
 import '../services/openai_vision_service.dart';
 import '../services/storage_service.dart';
 import '../services/tts_service.dart';
 import '../services/api_key_service.dart';
+import '../widgets/word_card_widget.dart';
 import 'flash_card_screen.dart';
 import 'quiz_screen.dart';
 import 'settings_screen.dart';
@@ -62,44 +64,65 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     super.dispose();
   }
   
-  void _loadSavedWords() {
-    // 모든 단어 로드
-    final allWords = _storageService.getAllWords();
-    
-    // DAY별로 그룹화
-    Map<String, List<WordEntry>> collections = {};
-    
-    for (var word in allWords) {
-      if (word.day != null) {
-        if (!collections.containsKey(word.day)) {
-          collections[word.day!] = [];
-        }
-        collections[word.day!]?.add(word);
+// _loadSavedWords 메서드에서 수정이 필요한 부분
+void _loadSavedWords() {
+  // 모든 단어 로드
+  final allWords = _storageService.getAllWords();
+  
+  // DAY별로 그룹화
+  Map<String, List<WordEntry>> collections = {};
+  
+  for (var word in allWords) {
+    if (word.day != null) {
+      if (!collections.containsKey(word.day)) {
+        collections[word.day!] = [];
       }
+      collections[word.day!]?.add(word);
     }
-    
-    // DAY 컬렉션 정보 로드
-    final dayCollections = _storageService.getAllDays();
-    
-    // 단어는 없지만 컬렉션 정보는 있는 경우도 포함
-    for (var dayName in dayCollections.keys) {
-      if (!collections.containsKey(dayName)) {
-        collections[dayName] = [];
-      }
-    }
-    
-    setState(() {
-      _dayCollections = collections;
-      
-      // 가장 최근 DAY 설정
-      if (collections.isNotEmpty) {
-        final days = collections.keys.toList()
-          ..sort((a, b) => int.parse(a.replaceAll('DAY ', ''))
-              .compareTo(int.parse(b.replaceAll('DAY ', ''))));
-        _currentDay = days.last;
-      }
-    });
   }
+  
+  // DAY 컬렉션 정보 로드
+  final dayCollections = _storageService.getAllDays();
+  
+  // 단어는 없지만 컬렉션 정보는 있는 경우도 포함
+  for (var dayName in dayCollections.keys) {
+    if (!collections.containsKey(dayName)) {
+      collections[dayName] = [];
+    }
+  }
+  
+  setState(() {
+    _dayCollections = collections;
+    
+    // 가장 최근 DAY 설정 (안전하게 수정)
+    if (collections.isNotEmpty) {
+      try {
+        final validDays = collections.keys.where((day) {
+          // DAY 뒤에 숫자만 있는지 확인
+          final match = RegExp(r'DAY\s+(\d+)').firstMatch(day);
+          return match != null;
+        }).toList();
+        
+        if (validDays.isNotEmpty) {
+          validDays.sort((a, b) {
+            // 정규식으로 숫자 부분만 추출
+            final numA = int.parse(RegExp(r'DAY\s+(\d+)').firstMatch(a)?.group(1) ?? '0');
+            final numB = int.parse(RegExp(r'DAY\s+(\d+)').firstMatch(b)?.group(1) ?? '0');
+            return numA.compareTo(numB);
+          });
+          _currentDay = validDays.last;
+        } else if (collections.keys.isNotEmpty) {
+          _currentDay = collections.keys.first; // 유효한 날짜가 없으면 첫 번째 키 사용
+        }
+      } catch (e) {
+        print('DAY 정렬 중 오류 발생: $e');
+        if (collections.keys.isNotEmpty) {
+          _currentDay = collections.keys.first; // 오류 발생 시 첫 번째 키 사용
+        }
+      }
+    }
+  });
+}
   
   // 단어장 이미지 테스트 실행
   Future<void> _runWordImageTest() async {
@@ -177,7 +200,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     );
   }
   
-  Future<void> _processBatchImages() async {
+Future<void> _processBatchImages() async {
     // API 키 확인
     if (_isUsingOpenAI && _openAIService == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -203,9 +226,14 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     
     // DAY 입력 다이얼로그 표시
     final String? selectedDay = await _showDaySelectionDialog();
-    if (selectedDay != null) {
-      _currentDay = selectedDay;
+    if (selectedDay == null) {
+      setState(() {
+        _isProcessing = false;
+      });
+      return;
     }
+    
+    _currentDay = selectedDay;
     
     // 각 이미지 처리
     List<WordEntry> allWords = [];
@@ -222,8 +250,8 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
         }
         
         // 현재 DAY 설정
-        for (var word in words) {
-          word = word.copyWith(day: _currentDay);
+        for (var i = 0; i < words.length; i++) {
+          words[i] = words[i].copyWith(day: _currentDay);
         }
         
         allWords.addAll(words);
@@ -235,77 +263,150 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       }
     }
     
+    setState(() {
+      _isProcessing = false;
+      _batchImages = []; // 배치 이미지 초기화
+    });
+    
+    if (allWords.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('단어를 추출하지 못했습니다. 다른 이미지를 시도해보세요.')),
+      );
+      return;
+    }
+    
     // 중복 제거 (같은 단어는 하나만 저장)
     final Map<String, WordEntry> uniqueWords = {};
     for (var word in allWords) {
       uniqueWords[word.word] = word;
     }
     
-    // 저장
-    await _storageService.saveWords(uniqueWords.values.toList());
-    
-    // DAY 컬렉션 정보 저장
-    await _storageService.saveDayCollection(_currentDay, uniqueWords.length);
-    
-    // 상태 업데이트
-    if (!_dayCollections.containsKey(_currentDay)) {
-      _dayCollections[_currentDay] = [];
-    }
-    _dayCollections[_currentDay]!.addAll(uniqueWords.values);
-    
-    setState(() {
-      _isProcessing = false;
-      _batchImages = []; // 배치 이미지 초기화
-    });
-    
-    // 완료 메시지
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('${uniqueWords.length}개의 단어가 저장되었습니다.')),
+    // 단어 편집 화면으로 이동
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => WordEditScreen(
+          words: uniqueWords.values.toList(),
+          dayName: _currentDay,
+        ),
+      ),
     );
+    
+    // 편집 화면에서 돌아왔을 때 저장 처리
+    if (result != null && result is Map) {
+      final List<WordEntry> editedWords = result['words'];
+      final String dayName = result['dayName'];
+      
+      // DAY 이름이 변경되었다면 처리
+      if (dayName != _currentDay) {
+        // 새 단어장에 모두 저장
+        for (var i = 0; i < editedWords.length; i++) {
+          editedWords[i] = editedWords[i].copyWith(day: dayName);
+        }
+        
+        // DAY 이름 업데이트
+        _currentDay = dayName;
+      }
+      
+      // 저장
+      await _storageService.saveWords(editedWords);
+      
+      // DAY 컬렉션 정보 저장
+      await _storageService.saveDayCollection(dayName, editedWords.length);
+      
+      // 상태 업데이트
+      if (!_dayCollections.containsKey(dayName)) {
+        _dayCollections[dayName] = [];
+      }
+      
+      // 기존 단어 제거 후 새 단어 추가
+      _dayCollections[dayName] = editedWords;
+      
+      // 완료 메시지
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${editedWords.length}개의 단어가 저장되었습니다.')),
+      );
+      
+      // 단어장 탭으로 전환
+      _tabController.animateTo(1); // 인덱스 1이 단어장 탭
+    }
   }
   
-  Future<String?> _showDaySelectionDialog() async {
-    // 다음 DAY 번호 계산
-    int nextDayNum = 1;
-    if (_dayCollections.isNotEmpty) {
-      final lastDay = _dayCollections.keys
-        .map((day) => int.parse(day.replaceAll('DAY ', '')))
-        .reduce((a, b) => a > b ? a : b);
-      nextDayNum = lastDay + 1;
+Future<String?> _showDaySelectionDialog() async {
+  // 다음 DAY 번호 계산 - 안전하게 수정
+  int nextDayNum = 1;
+  
+  if (_dayCollections.isNotEmpty) {
+    try {
+      // 유효한 DAY 형식의 키만 필터링
+      List<int> validDayNumbers = [];
+      
+      for (var day in _dayCollections.keys) {
+        // 정규식으로 "DAY " 다음에 오는 숫자 추출
+        final match = RegExp(r'DAY\s+(\d+)').firstMatch(day);
+        if (match != null && match.group(1) != null) {
+          validDayNumbers.add(int.parse(match.group(1)!));
+        }
+      }
+      
+      if (validDayNumbers.isNotEmpty) {
+        // 가장 큰 DAY 번호 찾기
+        nextDayNum = validDayNumbers.reduce((a, b) => a > b ? a : b) + 1;
+      }
+    } catch (e) {
+      print('DAY 번호 계산 중 오류 발생: $e');
+      // 오류 발생 시 기본값 1 사용
+      nextDayNum = 1;
     }
-    
-    final String suggestedDay = 'DAY $nextDayNum';
-    final TextEditingController controller = TextEditingController(text: suggestedDay);
-    
-    return showDialog<String>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('단어장 설정'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text('이 단어들을 저장할 DAY를 입력하세요'),
-            TextField(
-              controller: controller,
-              decoration: InputDecoration(
-                hintText: '예: DAY 1',
-              ),
+  }
+  
+  final String suggestedDay = 'DAY $nextDayNum';
+  final TextEditingController controller = TextEditingController(text: suggestedDay);
+  
+  return showDialog<String>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: Text('단어장 설정'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text('이 단어들을 저장할 DAY를 입력하세요'),
+          TextField(
+            controller: controller,
+            decoration: InputDecoration(
+              hintText: '예: DAY 1',
             ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(controller.text),
-            child: Text('확인'),
           ),
         ],
       ),
-    );
-  }
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(controller.text),
+          child: Text('확인'),
+        ),
+      ],
+    ),
+  );
+}
   
   // 단어 발음 듣기
-  Future<void> _speakWord(String word) async {
-    await _ttsService.speak(word);
+// 단어 발음 듣기 (액센트 선택 기능 추가)
+  Future<void> _speakWord(String word, {AccentType? accent}) async {
+    try {
+      await _ttsService.speak(word, accent: accent);
+    } catch (e) {
+      print('단어 발음 중 오류: $e');
+      // 오류 발생 시 사용자에게 안내
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('발음 재생 중 오류가 발생했습니다.'),
+          action: SnackBarAction(
+            label: '재시도',
+            onPressed: () => _speakWord(word, accent: accent),
+          ),
+        ),
+      );
+    }
   }
   
   @override
@@ -537,7 +638,8 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     );
   }
   
-  // 단어장 탭 UI
+// 단어장 탭 UI
+// 단어장 탭 UI에 삭제 기능 추가
   Widget _buildWordListTab() {
     if (_dayCollections.isEmpty) {
       return Center(child: Text('단어가 없습니다. 이미지를 촬영하여 단어를 추가하세요.'));
@@ -545,27 +647,39 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
     
     return Column(
       children: [
-        // DAY 선택 드롭다운
+        // DAY 선택 드롭다운 및 관리 버튼
         Padding(
           padding: const EdgeInsets.all(10),
-          child: DropdownButton<String>(
-            value: _dayCollections.keys.contains(_currentDay) 
-                ? _currentDay 
-                : _dayCollections.keys.first,
-            items: _dayCollections.keys.map((String day) {
-              final count = _dayCollections[day]?.length ?? 0;
-              return DropdownMenuItem<String>(
-                value: day,
-                child: Text('$day ($count단어)'),
-              );
-            }).toList(),
-            onChanged: (String? newValue) {
-              if (newValue != null) {
-                setState(() {
-                  _currentDay = newValue;
-                });
-              }
-            },
+          child: Row(
+            children: [
+              Expanded(
+                child: DropdownButton<String>(
+                  isExpanded: true,
+                  value: _dayCollections.keys.contains(_currentDay) 
+                      ? _currentDay 
+                      : _dayCollections.keys.first,
+                  items: _dayCollections.keys.map((String day) {
+                    final count = _dayCollections[day]?.length ?? 0;
+                    return DropdownMenuItem<String>(
+                      value: day,
+                      child: Text('$day ($count단어)'),
+                    );
+                  }).toList(),
+                  onChanged: (String? newValue) {
+                    if (newValue != null) {
+                      setState(() {
+                        _currentDay = newValue;
+                      });
+                    }
+                  },
+                ),
+              ),
+              IconButton(
+                icon: Icon(Icons.delete),
+                tooltip: '단어장 삭제',
+                onPressed: () => _showDeleteDayDialog(_currentDay),
+              ),
+            ],
           ),
         ),
         
@@ -577,96 +691,73 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                   itemCount: _dayCollections[_currentDay]?.length ?? 0,
                   itemBuilder: (context, index) {
                     final word = _dayCollections[_currentDay]![index];
-                    return Card(
-                      margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                      child: ExpansionTile(
-                        title: Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                word.word,
-                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-                              ),
-                            ),
-                            IconButton(
-                              icon: Icon(Icons.volume_up),
-                              onPressed: () => _speakWord(word.word),
-                              tooltip: '발음 듣기',
-                            ),
-                            if (word.isMemorized)
-                              Icon(Icons.check_circle, color: Colors.green, size: 16),
-                          ],
-                        ),
-                        subtitle: Text('${word.pronunciation} - ${word.meaning}'),
-                        children: [
-                          Padding(
-                            padding: const EdgeInsets.all(12),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                if (word.examples.isNotEmpty) ...[
-                                  const Text(
-                                    '예문:',
-                                    style: TextStyle(fontWeight: FontWeight.bold),
-                                  ),
-                                  const SizedBox(height: 5),
-                                  ...word.examples.map((example) => Padding(
-                                        padding: const EdgeInsets.only(bottom: 5),
-                                        child: Text('• $example'),
-                                      )),
-                                  const SizedBox(height: 10),
-                                ],
-                                if (word.commonPhrases.isNotEmpty) ...[
-                                  const Text(
-                                    '기출 표현:',
-                                    style: TextStyle(fontWeight: FontWeight.bold),
-                                  ),
-                                  const SizedBox(height: 5),
-                                  ...word.commonPhrases.map((phrase) => Padding(
-                                        padding: const EdgeInsets.only(bottom: 5),
-                                        child: Text('• $phrase'),
-                                      )),
-                                ],
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.end,
-                                  children: [
-                                    TextButton.icon(
-                                      icon: Icon(word.isMemorized ? Icons.check_circle : Icons.check_circle_outline),
-                                      label: Text(word.isMemorized ? '암기완료' : '암기하기'),
-                                      onPressed: () async {
-                                        await _storageService.updateMemorizedStatus(
-                                          word.word, 
-                                          !word.isMemorized
-                                        );
-                                        
-                                        setState(() {
-                                          // 단어장 목록에서 업데이트
-                                          final index = _dayCollections[_currentDay]!.indexOf(word);
-                                          if (index >= 0) {
-                                            _dayCollections[_currentDay]![index] = 
-                                              word.copyWith(isMemorized: !word.isMemorized);
-                                          }
-                                        });
-                                      },
-                                      style: ButtonStyle(
-                                        foregroundColor: MaterialStateProperty.all(
-                                          word.isMemorized ? Colors.green : Colors.grey,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
+                    
+                    // 단어 카드 위젯 사용
+                    return WordCardWidget(
+                      word: word,
+                      onSpeakWord: _speakWord,
+                      onUpdateMemorizedStatus: (String wordText, bool isMemorized) async {
+                        await _storageService.updateMemorizedStatus(wordText, isMemorized);
+                        
+                        setState(() {
+                          // 단어장 목록에서 업데이트
+                          final index = _dayCollections[_currentDay]!.indexOf(word);
+                          if (index >= 0) {
+                            _dayCollections[_currentDay]![index] = 
+                              word.copyWith(isMemorized: isMemorized);
+                          }
+                        });
+                      },
                     );
                   },
                 ),
         ),
       ],
     );
+  }
+  
+  // 단어장 삭제 다이얼로그
+  Future<void> _showDeleteDayDialog(String dayName) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('단어장 삭제'),
+        content: Text('$dayName 단어장을 삭제하시겠습니까?\n이 작업은 되돌릴 수 없으며, 해당 단어장의 모든 단어가 삭제됩니다.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text('취소'),
+          ),
+          TextButton(
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text('삭제'),
+          ),
+        ],
+      ),
+    );
+    
+    if (confirmed == true) {
+      // 단어장 삭제 처리
+      await _storageService.deleteDay(dayName);
+      
+      // 상태 업데이트
+      setState(() {
+        _dayCollections.remove(dayName);
+        
+        // 다른 단어장으로 이동
+        if (_dayCollections.isEmpty) {
+          _currentDay = 'DAY 1';  // 기본값 설정
+        } else {
+          _currentDay = _dayCollections.keys.first;
+        }
+      });
+      
+      // 완료 메시지
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('$dayName 단어장이 삭제되었습니다.')),
+      );
+    }
   }
   
   // 플래시카드 탭 UI

@@ -10,6 +10,7 @@ import '../services/api_key_service.dart';
 import 'flash_card_screen.dart';
 import 'quiz_screen.dart';
 import 'settings_screen.dart';
+import 'test_demo_screen.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({Key? key}) : super(key: key);
@@ -98,6 +99,23 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
         _currentDay = days.last;
       }
     });
+  }
+  
+  // 단어장 이미지 테스트 실행
+  Future<void> _runWordImageTest() async {
+    final XFile? image = await _picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 100,  // 최고 품질로 이미지 선택
+    );
+    
+    if (image != null) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => TestDemoScreen(imageFile: File(image.path)),
+        ),
+      );
+    }
   }
   
   Future<void> _takePhoto() async {
@@ -455,6 +473,16 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                         ),
                       ),
                     ),
+                  SizedBox(height: 16),
+                  // 단어장 테스트 버튼 추가
+                  OutlinedButton.icon(
+                    onPressed: _runWordImageTest,
+                    icon: Icon(Icons.science),
+                    label: Text('단어장 인식 테스트'),
+                    style: OutlinedButton.styleFrom(
+                      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    ),
+                  ),
                 ],
               ),
             ),

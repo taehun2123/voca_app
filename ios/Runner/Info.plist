@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Vocabulary App</string>
+	<string>캡쳐해보카</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -24,13 +24,10 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
-    <!-- 카메라 사용 권한 설명 -->
 	<key>NSCameraUsageDescription</key>
 	<string>단어장 이미지를 촬영하기 위해 카메라 접근 권한이 필요합니다.</string>
-    <!-- 사진 라이브러리 접근 권한 설명 -->
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>갤러리에서 단어장 이미지를 선택하기 위해 접근 권한이 필요합니다.</string>
-    <!-- 마이크 사용 권한 설명 (TTS 관련) -->
 	<key>NSMicrophoneUsageDescription</key>
 	<string>음성 인식 기능을 위해 마이크 접근 권한이 필요합니다.</string>
 	<key>UILaunchStoryboardName</key>

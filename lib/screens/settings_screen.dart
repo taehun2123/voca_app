@@ -198,13 +198,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           ),
                           SizedBox(height: 8),
                           Text(
-                            '이 앱은 OpenAI의 Vision API를 사용하여 단어장 이미지에서 단어, 발음, 의미, 예문 등을 자동으로 추출합니다.',
+                            '이 앱은 OpenAI의 GPT-4o-mini Model을 사용하여 단어장 이미지에서 단어, 발음, 의미, 예문 등을 자동으로 추출합니다.\n\n'
+                            '아래의 정보는 API 등록에 관한 정보입니다. 잘 읽어주시길 바랍니다.\n',
                           ),
                           SizedBox(height: 8),
                           Text(
-                            '• 각 이미지 인식 시 OpenAI API 사용료가 발생할 수 있습니다.\n'
-                            '• 이미지는 분석을 위해 OpenAI 서버로 전송되며, 처리 후 삭제됩니다.\n'
-                            '• 더 나은 인식 결과를 위해 밝고 선명한 이미지를 사용하세요.',
+                            '• API 등록 뿐만 아니라, OPEN API 홈페이지에서 결제수단 및 선결제를 하셔야 이용이 가능합니다.\n\n'
+                            '• 이미지는 분석을 위해 OpenAI 서버로 전송되며, 처리 후 삭제됩니다.\n\n'
+                            '• 더 나은 인식 결과를 위해 밝고 선명한 이미지를 사용하세요.\n\n'
+                            '• 사용료는 달러로 0.01 ~ 0.02 까지 발생합니다 참고 바랍니다.\n\n'
+                            '• 무슨 일이 있어도 해당 API 키는 개발자에게 전송되지 않습니다! 안심하고 사용하세요.\n\n',
                             style: TextStyle(color: Colors.grey[700]),
                           ),
                         ],

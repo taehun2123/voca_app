@@ -309,7 +309,7 @@ class _TestDemoScreenState extends State<TestDemoScreen> {
                 Navigator.pop(context, _extractedWords);
               },
               icon: Icon(Icons.save),
-              label: Text('단어장에 추가'),
+              label: Text('홈으로 가기'),
             )
           : null,
     );

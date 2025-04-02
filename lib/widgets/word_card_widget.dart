@@ -20,7 +20,6 @@ class WordCardWidget extends StatefulWidget {
 
 class _WordCardWidgetState extends State<WordCardWidget> {
   AccentType _selectedAccent = AccentType.american;
-  bool _isExpanded = false;
 
   @override
   Widget build(BuildContext context) {
@@ -34,7 +33,6 @@ class _WordCardWidgetState extends State<WordCardWidget> {
       child: ExpansionTile(
         onExpansionChanged: (expanded) {
           setState(() {
-            _isExpanded = expanded;
           });
         },
         shape: const RoundedRectangleBorder(

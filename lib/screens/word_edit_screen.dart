@@ -39,22 +39,25 @@ class _WordEditScreenState extends State<WordEditScreen> {
   // 단어 수정 다이얼로그
   Future<void> _editWord(int index) async {
     final word = _editableWords[index];
-    
+
     // 컨트롤러 초기화
-    final TextEditingController wordController = TextEditingController(text: word.word);
-    final TextEditingController pronunciationController = TextEditingController(text: word.pronunciation);
-    final TextEditingController meaningController = TextEditingController(text: word.meaning);
-    
+    final TextEditingController wordController =
+        TextEditingController(text: word.word);
+    final TextEditingController pronunciationController =
+        TextEditingController(text: word.pronunciation);
+    final TextEditingController meaningController =
+        TextEditingController(text: word.meaning);
+
     // 예문과 관용구 관리를 위한 상태 변수
-    List<TextEditingController> exampleControllers = 
+    List<TextEditingController> exampleControllers =
         word.examples.map((e) => TextEditingController(text: e)).toList();
     if (exampleControllers.isEmpty) {
       exampleControllers.add(TextEditingController());
     }
-    
-    List<TextEditingController> phraseControllers = 
+
+    List<TextEditingController> phraseControllers =
         word.commonPhrases.map((e) => TextEditingController(text: e)).toList();
-    
+
     // 수정 다이얼로그 표시
     final result = await showDialog<bool>(
       context: context,
@@ -87,7 +90,7 @@ class _WordEditScreenState extends State<WordEditScreen> {
                       labelText: '의미',
                     ),
                   ),
-                  
+
                   // 예문 관리
                   SizedBox(height: 16),
                   Text('예문:', style: TextStyle(fontWeight: FontWeight.bold)),
@@ -98,7 +101,7 @@ class _WordEditScreenState extends State<WordEditScreen> {
                           child: TextField(
                             controller: exampleControllers[i],
                             decoration: InputDecoration(
-                              hintText: '예문 ${i+1}',
+                              hintText: '예문 ${i + 1}',
                             ),
                           ),
                         ),
@@ -122,7 +125,7 @@ class _WordEditScreenState extends State<WordEditScreen> {
                       });
                     },
                   ),
-                  
+
                   // 관용구 관리
                   SizedBox(height: 16),
                   Text('관용구:', style: TextStyle(fontWeight: FontWeight.bold)),
@@ -133,7 +136,7 @@ class _WordEditScreenState extends State<WordEditScreen> {
                           child: TextField(
                             controller: phraseControllers[i],
                             decoration: InputDecoration(
-                              hintText: '관용구 ${i+1}',
+                              hintText: '관용구 ${i + 1}',
                             ),
                           ),
                         ),
@@ -174,7 +177,7 @@ class _WordEditScreenState extends State<WordEditScreen> {
         },
       ),
     );
-    
+
     // 저장 처리
     if (result == true) {
       // 예문 및 관용구 필터링 (빈 항목 제거)
@@ -182,12 +185,12 @@ class _WordEditScreenState extends State<WordEditScreen> {
           .map((controller) => controller.text.trim())
           .where((text) => text.isNotEmpty)
           .toList();
-          
+
       final phrases = phraseControllers
           .map((controller) => controller.text.trim())
           .where((text) => text.isNotEmpty)
           .toList();
-      
+
       // 단어 업데이트
       setState(() {
         _editableWords[index] = word.copyWith(
@@ -200,7 +203,7 @@ class _WordEditScreenState extends State<WordEditScreen> {
         _isModified = true;
       });
     }
-    
+
     // 컨트롤러 정리
     wordController.dispose();
     pronunciationController.dispose();
@@ -212,11 +215,12 @@ class _WordEditScreenState extends State<WordEditScreen> {
       controller.dispose();
     }
   }
-  
+
   // 단어장 이름 변경
   Future<void> _changeDayName() async {
-    final TextEditingController controller = TextEditingController(text: _currentDay);
-    
+    final TextEditingController controller =
+        TextEditingController(text: _currentDay);
+
     final result = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
@@ -239,14 +243,14 @@ class _WordEditScreenState extends State<WordEditScreen> {
         ],
       ),
     );
-    
+
     if (result != null && result.isNotEmpty && result != _currentDay) {
       setState(() {
         _currentDay = result;
         _isModified = true;
       });
     }
-    
+
     controller.dispose();
   }
 
@@ -257,7 +261,7 @@ class _WordEditScreenState extends State<WordEditScreen> {
     final pronunciationController = TextEditingController();
     final meaningController = TextEditingController();
     final exampleController = TextEditingController();
-    
+
     final result = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -303,7 +307,7 @@ class _WordEditScreenState extends State<WordEditScreen> {
           ),
           TextButton(
             onPressed: () {
-              if (wordController.text.trim().isEmpty || 
+              if (wordController.text.trim().isEmpty ||
                   meaningController.text.trim().isEmpty) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(content: Text('단어와 의미는 필수입니다.')),
@@ -317,14 +321,14 @@ class _WordEditScreenState extends State<WordEditScreen> {
         ],
       ),
     );
-    
+
     if (result == true) {
       // 예문 처리
       List<String> examples = [];
       if (exampleController.text.trim().isNotEmpty) {
         examples.add(exampleController.text.trim());
       }
-      
+
       // 새 단어 추가
       setState(() {
         _editableWords.add(WordEntry(
@@ -337,7 +341,7 @@ class _WordEditScreenState extends State<WordEditScreen> {
         _isModified = true;
       });
     }
-    
+
     // 컨트롤러 정리
     wordController.dispose();
     pronunciationController.dispose();
@@ -412,9 +416,9 @@ class _WordEditScreenState extends State<WordEditScreen> {
               ],
             ),
           ),
-          
+
           Divider(),
-          
+
           // 단어 목록
           Expanded(
             child: _editableWords.isEmpty
@@ -465,7 +469,8 @@ class _WordEditScreenState extends State<WordEditScreen> {
                           );
                         },
                         child: Card(
-                          margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                          margin: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 5),
                           child: ListTile(
                             title: Text(
                               word.word,
@@ -509,6 +514,7 @@ class _WordEditScreenState extends State<WordEditScreen> {
           ),
         ],
       ),
+      // lib/screens/word_edit_screen.dart 파일의 bottomNavigationBar 위젯 수정
       bottomNavigationBar: BottomAppBar(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
@@ -517,23 +523,24 @@ class _WordEditScreenState extends State<WordEditScreen> {
             children: [
               OutlinedButton(
                 onPressed: () {
-                  Navigator.of(context).pop();
+                  // '취소' 대신 '다시 시도' 버튼으로 변경
+                  // 이전 화면으로 돌아가되, 다시 인식 시도 요청
+                  Navigator.of(context).pop({'retry': true});
                 },
-                child: Text('취소'),
+                child: Text('다시 인식하기'),
               ),
               ElevatedButton(
+                // 항상 활성화 (조건 제거)
+                onPressed: () {
+                  // 수정된 단어와 DAY 이름을 함께 반환
+                  Navigator.of(context).pop({
+                    'words': _editableWords,
+                    'dayName': _currentDay,
+                  });
+                },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: _isModified ? Colors.green : Colors.grey,
+                  backgroundColor: Colors.green,
                 ),
-                onPressed: _isModified
-                    ? () {
-                        // 수정된 단어와 DAY 이름을 함께 반환
-                        Navigator.of(context).pop({
-                          'words': _editableWords,
-                          'dayName': _currentDay,
-                        });
-                      }
-                    : null,
                 child: Text('저장'),
               ),
             ],

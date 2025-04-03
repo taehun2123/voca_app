@@ -752,18 +752,6 @@ class _HomePageState extends State<HomePage>
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Container(
-                      decoration: BoxDecoration(
-                        color: Colors.blue.shade50,
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      padding: EdgeInsets.all(24),
-                      child: Icon(
-                        Icons.image_search,
-                        size: 20,
-                        color: Colors.blue.shade300,
-                      ),
-                    ),
                     const SizedBox(height: 24),
                     const Text(
                       '교재나 단어장 이미지를 촬영하거나 갤러리에서 선택하세요',
@@ -781,10 +769,15 @@ class _HomePageState extends State<HomePage>
                     if (_isUsingOpenAI)
                       Container(
                         decoration: BoxDecoration(
-                          color: Colors.green.shade50,
+                          color: Theme.of(context).brightness == Brightness.dark 
+                            ? Colors.green.shade900 
+                            : Colors.green.shade50,
                           borderRadius: BorderRadius.circular(16),
                           border: Border.all(
-                            color: Colors.green.shade100,
+                            color:
+                                Theme.of(context).brightness == Brightness.dark
+                                    ? Colors.green.shade900.withOpacity(0.3)
+                                    : Colors.green.shade50,
                             width: 1,
                           ),
                         ),
@@ -794,12 +787,18 @@ class _HomePageState extends State<HomePage>
                             Container(
                               padding: EdgeInsets.all(8),
                               decoration: BoxDecoration(
-                                color: Colors.green.shade100,
+                                color: Theme.of(context).brightness ==
+                                        Brightness.dark
+                                    ? Colors.green.shade700
+                                    : Colors.green.shade300,
                                 shape: BoxShape.circle,
                               ),
                               child: Icon(
                                 Icons.check_circle,
-                                color: Colors.green,
+                                color: Theme.of(context).brightness ==
+                                        Brightness.dark
+                                    ? Colors.green.shade300
+                                    : Colors.green,
                                 size: 20,
                               ),
                             ),
@@ -808,7 +807,9 @@ class _HomePageState extends State<HomePage>
                               'OpenAI 사용 중',
                               style: TextStyle(
                                 fontWeight: FontWeight.bold,
-                                color: Colors.green[800],
+                                color: Theme.of(context).brightness == Brightness.dark 
+                            ? Colors.green.shade50 
+                            : Colors.green.shade900,
                               ),
                             ),
                           ],

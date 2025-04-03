@@ -1193,14 +1193,14 @@ class _HomePageState extends State<HomePage>
                 _buildStatCard(
                   '총 단어',
                   '${_dayCollections[_currentDay]?.length ?? 0}',
-                  Colors.blue,
+                  Colors.blue, // MaterialColor 그대로 전달
                   Icons.format_list_numbered,
                 ),
                 SizedBox(width: 12),
                 _buildStatCard(
                   '암기 완료',
                   '${_dayCollections[_currentDay]?.where((w) => w.isMemorized).length ?? 0}',
-                  Colors.green,
+                  Colors.green, // MaterialColor 그대로 전달
                   Icons.check_circle,
                 ),
               ],
@@ -1273,13 +1273,31 @@ class _HomePageState extends State<HomePage>
   }
 
 // 통계 카드 위젯
+// _buildStatCard 함수 수정 - MaterialColor 매개변수 유지하고 내부에서 색상 처리
   Widget _buildStatCard(
       String title, String value, MaterialColor color, IconData icon) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
+    // 다크모드에 맞는 색상 생성
+    final backgroundColor = isDarkMode
+        ? Color.fromRGBO(
+            color.shade900.red, color.shade900.green, color.shade900.blue, 0.3)
+        : color.shade50;
+
+    final iconBackgroundColor = isDarkMode
+        ? Color.fromRGBO(
+            color.shade800.red, color.shade800.green, color.shade800.blue, 0.5)
+        : color.shade100;
+
+    final iconColor = isDarkMode ? color.shade300 : color.shade700;
+    final titleColor = isDarkMode ? color.shade300 : color.shade700;
+    final valueColor = isDarkMode ? color.shade100 : color.shade900;
+
     return Expanded(
       child: Container(
         padding: EdgeInsets.symmetric(vertical: 16, horizontal: 16),
         decoration: BoxDecoration(
-          color: color.shade50,
+          color: backgroundColor,
           borderRadius: BorderRadius.circular(16),
         ),
         child: Row(
@@ -1287,10 +1305,10 @@ class _HomePageState extends State<HomePage>
             Container(
               padding: EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: color.shade100,
+                color: iconBackgroundColor,
                 shape: BoxShape.circle,
               ),
-              child: Icon(icon, color: color.shade700, size: 20),
+              child: Icon(icon, color: iconColor, size: 20),
             ),
             SizedBox(width: 12),
             Column(
@@ -1298,10 +1316,7 @@ class _HomePageState extends State<HomePage>
               children: [
                 Text(
                   title,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: color.shade700,
-                  ),
+                  style: TextStyle(fontSize: 12, color: titleColor),
                 ),
                 SizedBox(height: 4),
                 Text(
@@ -1309,7 +1324,7 @@ class _HomePageState extends State<HomePage>
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
-                    color: color.shade900,
+                    color: valueColor,
                   ),
                 ),
               ],

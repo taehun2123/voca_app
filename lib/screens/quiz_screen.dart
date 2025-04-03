@@ -26,7 +26,7 @@ class _QuizScreenState extends State<QuizScreen> {
   int _correctAnswers = 0;
   int _totalAnswered = 0;
   bool _isReady = false;
-  
+
   // 퀴즈 모드 (0: 단어->의미, 1: 의미->단어)
   int _quizMode = 0;
 
@@ -62,11 +62,11 @@ class _QuizScreenState extends State<QuizScreen> {
     _totalAnswered = 0;
     _showResult = false;
     _selectedOption = null;
-    
+
     setState(() {
       _isReady = true;
     });
-    
+
     _prepareQuestion();
   }
 
@@ -77,16 +77,16 @@ class _QuizScreenState extends State<QuizScreen> {
 
     // 현재 단어
     final correctWord = _quizWords[_currentIndex];
-    
+
     List<String> optionsList = [];
     if (_quizMode == 0) {
       // 단어->의미 퀴즈: 정답 의미와 오답 의미 3개 준비
-      
+
       // 오답 단어 최대 20개 선택 (중복 없이, 현재 단어 제외)
       List<WordEntry> otherWords = widget.allWords
           .where((w) => w.word != correctWord.word && w.meaning.isNotEmpty)
           .toList();
-      
+
       if (otherWords.length < 3) {
         // 충분한 단어가 없으면 기본 단어 사용
         optionsList = [
@@ -98,19 +98,18 @@ class _QuizScreenState extends State<QuizScreen> {
       } else {
         otherWords.shuffle();
         otherWords = otherWords.take(3).toList();
-        
+
         // 정답 의미와 오답 의미 3개 합치기
         optionsList = [correctWord.meaning]
-            ..addAll(otherWords.map((w) => w.meaning));
+          ..addAll(otherWords.map((w) => w.meaning));
       }
     } else {
       // 의미->단어 퀴즈: 정답 단어와 오답 단어 3개 준비
-      
+
       // 오답 단어 최대 20개 선택 (중복 없이, 현재 단어 제외)
-      List<WordEntry> otherWords = widget.allWords
-          .where((w) => w.word != correctWord.word)
-          .toList();
-      
+      List<WordEntry> otherWords =
+          widget.allWords.where((w) => w.word != correctWord.word).toList();
+
       if (otherWords.length < 3) {
         // 충분한 단어가 없으면 기본 단어 사용
         optionsList = [
@@ -122,10 +121,9 @@ class _QuizScreenState extends State<QuizScreen> {
       } else {
         otherWords.shuffle();
         otherWords = otherWords.take(3).toList();
-        
+
         // 정답 단어와 오답 단어 3개 합치기
-        optionsList = [correctWord.word]
-            ..addAll(otherWords.map((w) => w.word));
+        optionsList = [correctWord.word]..addAll(otherWords.map((w) => w.word));
       }
     }
 
@@ -141,13 +139,14 @@ class _QuizScreenState extends State<QuizScreen> {
 
   void _checkAnswer(String selected) {
     final correctWord = _quizWords[_currentIndex];
-    final correctAnswer = _quizMode == 0 ? correctWord.meaning : correctWord.word;
-    
+    final correctAnswer =
+        _quizMode == 0 ? correctWord.meaning : correctWord.word;
+
     setState(() {
       _selectedOption = selected;
       _showResult = true;
       _totalAnswered++;
-      
+
       if (selected == correctAnswer) {
         _correctAnswers++;
       }
@@ -214,13 +213,12 @@ class _QuizScreenState extends State<QuizScreen> {
     }
 
     final currentWord = _quizWords[_currentIndex];
-    final String questionText = _quizMode == 0 
-        ? currentWord.word  // 단어->의미 모드: 단어를 보여주고 의미 맞추기
+    final String questionText = _quizMode == 0
+        ? currentWord.word // 단어->의미 모드: 단어를 보여주고 의미 맞추기
         : currentWord.meaning; // 의미->단어 모드: 의미를 보여주고 단어 맞추기
-    final String questionTitle = _quizMode == 0 
-        ? '다음 단어의 의미는?' 
-        : '다음 의미에 해당하는 단어는?';
-    
+    final String questionTitle =
+        _quizMode == 0 ? '다음 단어의 의미는?' : '다음 의미에 해당하는 단어는?';
+
     return Column(
       children: [
         Padding(
@@ -232,14 +230,33 @@ class _QuizScreenState extends State<QuizScreen> {
                 children: [
                   Text(
                     '${_currentIndex + 1} / ${_quizWords.length}',
-                    style: TextStyle(fontSize: 16),
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Theme.of(context)
+                          .textTheme
+                          .bodyLarge
+                          ?.color, // 테마에 맞는 텍스트 색상
+                    ),
                   ),
                   Row(
                     children: [
-                      Text('모드: '),
+                      Text(
+                        '모드: ',
+                        style: TextStyle(
+                          color: Theme.of(context)
+                              .textTheme
+                              .bodyMedium
+                              ?.color, // 테마에 맞는 텍스트 색상
+                        ),
+                      ),
                       TextButton(
                         onPressed: _toggleQuizMode,
                         child: Text(_quizMode == 0 ? '단어→의미' : '의미→단어'),
+                        style: TextButton.styleFrom(
+                          foregroundColor: Theme.of(context)
+                              .colorScheme
+                              .secondary, // 테마에 맞는 버튼 텍스트 색상
+                        ),
                       ),
                     ],
                   ),
@@ -250,7 +267,9 @@ class _QuizScreenState extends State<QuizScreen> {
                 '정답: $_correctAnswers',
                 style: TextStyle(
                   fontSize: 16,
-                  color: Colors.green,
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? Colors.green.shade300 // 다크모드 강조 텍스트 색상
+                      : Colors.green, // 라이트모드 강조 텍스트 색상
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -308,10 +327,11 @@ class _QuizScreenState extends State<QuizScreen> {
             padding: EdgeInsets.all(16),
             itemBuilder: (context, index) {
               final option = _options[index];
-              final correctAnswer = _quizMode == 0 ? currentWord.meaning : currentWord.word;
+              final correctAnswer =
+                  _quizMode == 0 ? currentWord.meaning : currentWord.word;
               bool isCorrect = option == correctAnswer;
               bool isSelected = option == _selectedOption;
-              
+
               return Card(
                 elevation: isSelected ? 4 : 1,
                 margin: EdgeInsets.only(bottom: 12),

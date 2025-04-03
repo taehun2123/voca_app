@@ -70,7 +70,7 @@ class ApiGuideScreen extends StatelessWidget {
               // 섹션 4: 앱에 API 키 입력
               _buildSection(
                 title: '4. 앱에 API 키 입력하기',
-                imagePath: 'assets/images/guide/InsertKey.png',
+                imagePath: 'assets/images/guide/InsertKey.jpeg',
                 steps: [
                   '앱의 설정 메뉴로 이동합니다.',
                   '"OpenAI API 설정" 섹션에서 API 키 입력 필드에 복사한 키를 붙여넣습니다.',

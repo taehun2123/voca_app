@@ -1,13 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:path/path.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:vocabulary_app/services/db_service.dart';
 import 'screens/home_screen.dart';
 import 'services/api_key_service.dart';
 
 // main.dart 수정
-// lib/main.dart의 main 함수 수정
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   

@@ -239,188 +239,193 @@ class _HomePageState extends State<HomePage>
     );
   }
 
-  Future<void> _processBatchImages() async {
-    // API 키 확인
-    if (_isUsingOpenAI && _openAIService == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content:
-              const Text('OpenAI API 키가 설정되지 않았습니다. 설정 화면에서 API 키를 입력해주세요.'),
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
-          action: SnackBarAction(
-            label: '설정',
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => SettingsScreen()),
-              ).then((_) => _initializeOpenAI());
-            },
-          ),
+// lib/screens/home_screen.dart의 _processBatchImages 함수 수정
+
+Future<void> _processBatchImages() async {
+  // API 키 확인
+  if (_isUsingOpenAI && _openAIService == null) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content:
+            const Text('OpenAI API 키가 설정되지 않았습니다. 설정 화면에서 API 키를 입력해주세요.'),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
         ),
-      );
-      return;
-    }
-
-    setState(() {
-      _isProcessing = true;
-      _showDetailedProgress = true;
-      _processedImages = 0;
-      _totalImagesToProcess = _batchImages.length;
-      _extractedWordsCount = 0;
-    });
-
-    // DAY 입력 다이얼로그 표시
-    final String? selectedDay = await _showDaySelectionDialog();
-    if (selectedDay == null) {
-      setState(() {
-        _isProcessing = false;
-      });
-      return;
-    }
-
-    _currentDay = selectedDay;
-
-    // 각 이미지 처리
-    List<WordEntry> allWords = [];
-    for (var i = 0; i < _batchImages.length; i++) {
-      try {
-        setState(() {
-          _processedImages = i + 1;
-        });
-
-        if (_isUsingOpenAI && _openAIService != null) {
-          List<WordEntry> words =
-              await _openAIService!.extractWordsFromImage(_batchImages[i]);
-          allWords.addAll(words);
-
-          setState(() {
-            _extractedWordsCount += words.length;
-          });
-        }
-      } catch (e) {
-        print('이미지 처리 중 오류: $e');
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('이미지 처리 중 오류가 발생했습니다: ${e.toString()}'),
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
-          ),
-        );
-      }
-    }
-
-    setState(() {
-      _isProcessing = false;
-      _batchImages = []; // 배치 이미지 초기화
-    });
-
-    if (allWords.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('단어를 추출하지 못했습니다. 다른 이미지를 시도해보세요.'),
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
-        ),
-      );
-      return;
-    }
-
-    // 중복 제거 (같은 단어는 하나만 저장)
-    final Map<String, WordEntry> uniqueWords = {};
-    for (var word in allWords) {
-      uniqueWords[word.word] = word;
-    }
-
-    // 단어 편집 화면으로 이동
-    final result = await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => WordEditScreen(
-          words: uniqueWords.values.toList(),
-          dayName: _currentDay,
+        action: SnackBarAction(
+          label: '설정',
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => SettingsScreen()),
+            ).then((_) => _initializeOpenAI());
+          },
         ),
       ),
     );
+    return;
+  }
 
-// _processBatchImages 함수 수정
+  setState(() {
+    _isProcessing = true;
+    _showDetailedProgress = true;
+    _processedImages = 0;
+    _totalImagesToProcess = _batchImages.length;
+    _extractedWordsCount = 0;
+  });
 
-// 편집 화면에서 돌아왔을 때 저장 처리
-// 편집 화면에서 돌아왔을 때 저장 처리 부분 수정
-    if (result != null && result is Map) {
-      try {
-        final List<WordEntry> editedWords = result['words'];
-        final String dayName = result['dayName'];
+  // DAY 입력 다이얼로그 표시
+  final String? selectedDay = await _showDaySelectionDialog();
+  if (selectedDay == null) {
+    setState(() {
+      _isProcessing = false;
+    });
+    return;
+  }
 
-        print('단어 편집 결과: ${editedWords.length}개 단어, DAY: $dayName');
+  _currentDay = selectedDay;
 
-        // DAY 이름이 변경되었다면 처리
-        if (dayName != _currentDay) {
-          print('DAY 이름 변경: $_currentDay -> $dayName');
-          // 새 단어장에 모두 저장
-          for (var i = 0; i < editedWords.length; i++) {
-            editedWords[i] = editedWords[i].copyWith(day: dayName);
-          }
+  // 각 이미지 처리
+  List<WordEntry> allWords = [];
+  for (var i = 0; i < _batchImages.length; i++) {
+    try {
+      setState(() {
+        _processedImages = i + 1;
+      });
 
-          // DAY 이름 업데이트
-          _currentDay = dayName;
+      if (_isUsingOpenAI && _openAIService != null) {
+        List<WordEntry> words =
+            await _openAIService!.extractWordsFromImage(_batchImages[i]);
+        
+        // 여기서 추출된 단어들에 현재 선택된 DAY 값을 설정
+        for (var j = 0; j < words.length; j++) {
+          words[j] = words[j].copyWith(day: _currentDay);
         }
+        
+        allWords.addAll(words);
 
-        // 저장
-        await _storageService.saveWords(editedWords);
-
-        // DAY 컬렉션 정보 저장
-        await _storageService.saveDayCollection(dayName, editedWords.length);
-
-        // 상태 업데이트 - 즉시 반영
         setState(() {
-          if (!_dayCollections.containsKey(dayName)) {
-            _dayCollections[dayName] = [];
-            print('새 컬렉션 생성: $dayName');
-          }
-
-          // 새 단어로 기존 단어 교체
-          _dayCollections[dayName] = List.from(editedWords);
-          print('$dayName 컬렉션 업데이트: ${editedWords.length}개 단어');
+          _extractedWordsCount += words.length;
         });
-
-        // 기존 데이터 다시 로드 (확실한 동기화를 위해)
-        _loadSavedWords();
-
-        // 완료 메시지
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('${editedWords.length}개의 단어가 저장되었습니다.'),
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
-          ),
-        );
-
-        // 약간의 지연 후 단어장 탭으로 전환
-        Future.delayed(Duration(milliseconds: 300), () {
-          if (mounted) {
-            _tabController.animateTo(1); // 인덱스 1이 단어장 탭
-          }
-        });
-      } catch (e) {
-        print('단어 저장 중 오류: $e');
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('단어 저장 중 오류가 발생했습니다: $e'),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
       }
+    } catch (e) {
+      print('이미지 처리 중 오류: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('이미지 처리 중 오류가 발생했습니다: ${e.toString()}'),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+      );
     }
   }
+
+  setState(() {
+    _isProcessing = false;
+    _batchImages = []; // 배치 이미지 초기화
+  });
+
+  if (allWords.isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('단어를 추출하지 못했습니다. 다른 이미지를 시도해보세요.'),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
+      ),
+    );
+    return;
+  }
+
+  // 중복 제거 (같은 단어는 하나만 저장)
+  final Map<String, WordEntry> uniqueWords = {};
+  for (var word in allWords) {
+    uniqueWords[word.word] = word;
+  }
+
+  // 단어 편집 화면으로 이동
+  final result = await Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (context) => WordEditScreen(
+        words: uniqueWords.values.toList(),
+        dayName: _currentDay,
+      ),
+    ),
+  );
+
+  // 편집 화면에서 돌아왔을 때 저장 처리
+  if (result != null && result is Map) {
+    try {
+      final List<WordEntry> editedWords = result['words'];
+      final String dayName = result['dayName'];
+
+      print('단어 편집 결과: ${editedWords.length}개 단어, DAY: $dayName');
+
+      // DAY 이름이 변경되었다면 처리
+      if (dayName != _currentDay) {
+        print('DAY 이름 변경: $_currentDay -> $dayName');
+        // 새 단어장에 모두 저장
+        for (var i = 0; i < editedWords.length; i++) {
+          editedWords[i] = editedWords[i].copyWith(day: dayName);
+        }
+
+        // DAY 이름 업데이트
+        _currentDay = dayName;
+      }
+
+      // 저장
+      await _storageService.saveWords(editedWords);
+
+      // DAY 컬렉션 정보 저장
+      await _storageService.saveDayCollection(dayName, editedWords.length);
+
+      // 상태 업데이트 - 즉시 반영
+      setState(() {
+        if (!_dayCollections.containsKey(dayName)) {
+          _dayCollections[dayName] = [];
+          print('새 컬렉션 생성: $dayName');
+        }
+
+        // 새 단어로 기존 단어 교체
+        _dayCollections[dayName] = List.from(editedWords);
+        print('$dayName 컬렉션 업데이트: ${editedWords.length}개 단어');
+      });
+
+      // 기존 데이터 다시 로드 (확실한 동기화를 위해)
+      _loadSavedWords();
+
+      // 완료 메시지
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${editedWords.length}개의 단어가 저장되었습니다.'),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+      );
+
+      // 약간의 지연 후 단어장 탭으로 전환
+      Future.delayed(Duration(milliseconds: 300), () {
+        if (mounted) {
+          _tabController.animateTo(1); // 인덱스 1이 단어장 탭
+        }
+      });
+    } catch (e) {
+      print('단어 저장 중 오류: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('단어 저장 중 오류가 발생했습니다: $e'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+}
 
   Future<String?> _showDaySelectionDialog() async {
     // 다음 DAY 번호 계산 - 안전하게 수정
@@ -1219,8 +1224,6 @@ class _HomePageState extends State<HomePage>
   }
 
 // 단어장 삭제 다이얼로그
-// lib/screens/home_screen.dart의 _showDeleteDayDialog 함수 수정
-// lib/screens/home_screen.dart의 _showDeleteDayDialog 함수 수정
   Future<void> _showDeleteDayDialog(String dayName) async {
     // "기타" 단어장은 day가 null인 단어들의 모음
     final bool isNullDayCollection = dayName == '기타';

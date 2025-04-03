@@ -837,10 +837,10 @@ class _HomePageState extends State<HomePage>
                               child: Icon(
                                 Icons.info_outline,
                                 color: Colors.orange,
-                                size: 24,
+                                size: 20,
                               ),
                             ),
-                            const SizedBox(height: 12),
+                            const SizedBox(height: 10),
                             Text(
                               'API 키가 필요합니다',
                               style: TextStyle(
@@ -848,7 +848,7 @@ class _HomePageState extends State<HomePage>
                                 color: Colors.orange[800],
                               ),
                             ),
-                            const SizedBox(height: 12),
+                            const SizedBox(height: 10),
                             OutlinedButton(
                               onPressed: () {
                                 Navigator.push(

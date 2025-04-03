@@ -1,7 +1,7 @@
 // lib/main.dart 파일 수정
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';  // SystemChrome 사용을 위한 import 추가
+import 'package:flutter/services.dart'; // SystemChrome 사용을 위한 import 추가
 import 'package:provider/provider.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:vocabulary_app/services/db_service.dart';
@@ -12,48 +12,48 @@ import 'services/api_key_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   // 화면 방향 설정 - 세로 모드만 허용하여 오버플로우 문제 방지
   await SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
   ]);
-  
+
   // 데이터베이스 서비스 초기화
   final dbService = DBService();
   try {
     print('앱 시작: 데이터베이스 초기화 중...');
-    
+
     // 데이터베이스 접근 및 기본 쿼리 실행해보기
     final db = await dbService.database;
-    final tables = await db.rawQuery("SELECT name FROM sqlite_master WHERE type='table'");
+    final tables =
+        await db.rawQuery("SELECT name FROM sqlite_master WHERE type='table'");
     print('데이터베이스 테이블 목록: ${tables.map((t) => t['name']).join(', ')}');
-    
+
     // 단어 테이블 쿼리
-    final wordCount = Sqflite.firstIntValue(
-      await db.rawQuery("SELECT COUNT(*) FROM words")
-    );
+    final wordCount =
+        Sqflite.firstIntValue(await db.rawQuery("SELECT COUNT(*) FROM words"));
     print('단어 테이블 초기 레코드 수: ${wordCount ?? 0}');
-    
+
     // 단어장 테이블 쿼리
     final dayCount = Sqflite.firstIntValue(
-      await db.rawQuery("SELECT COUNT(*) FROM day_collections")
-    );
+        await db.rawQuery("SELECT COUNT(*) FROM day_collections"));
     print('단어장 테이블 초기 레코드 수: ${dayCount ?? 0}');
-    
+
     // day별 단어 수 쿼리
-    final dayQuery = await db.rawQuery('SELECT day, COUNT(*) as count FROM words GROUP BY day');
+    final dayQuery = await db
+        .rawQuery('SELECT day, COUNT(*) as count FROM words GROUP BY day');
     print('DAY별 단어 수:');
     for (var row in dayQuery) {
       final day = row['day'] ?? '없음';
       final count = row['count'];
       print('- $day: $count개');
     }
-    
+
     // API 키 서비스 초기화
     final apiKeyService = ApiKeyService();
     await apiKeyService.init();
-    
+
     runApp(
       ChangeNotifierProvider(
         create: (_) => ThemeProvider(),
@@ -83,7 +83,8 @@ class MyApp extends StatelessWidget {
           title: '캡쳐해보카',
           theme: AppThemes.lightTheme,
           darkTheme: AppThemes.darkTheme,
-          themeMode: themeProvider.isDarkMode ? ThemeMode.dark : ThemeMode.light,
+          themeMode:
+              themeProvider.isDarkMode ? ThemeMode.dark : ThemeMode.light,
           home: const HomePage(),
         );
       },

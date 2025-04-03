@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:vocabulary_app/services/db_service.dart';
+import 'package:vocabulary_app/theme/app_themes.dart';
+import 'package:vocabulary_app/theme/theme_provider.dart';
 import 'screens/home_screen.dart';
 import 'services/api_key_service.dart';
 
-// main.dart 수정
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
@@ -43,10 +45,20 @@ void main() async {
     final apiKeyService = ApiKeyService();
     await apiKeyService.init();
     
-    runApp(const MyApp());
+    runApp(
+      ChangeNotifierProvider(
+        create: (_) => ThemeProvider(),
+        child: const MyApp(),
+      ),
+    );
   } catch (e) {
     print('앱 초기화 중 오류: $e');
-    runApp(const MyApp());
+    runApp(
+      ChangeNotifierProvider(
+        create: (_) => ThemeProvider(),
+        child: const MyApp(),
+      ),
+    );
   }
 }
 
@@ -55,18 +67,17 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: '캡쳐해보카',
-      theme: ThemeData(
-        primarySwatch: Colors.green,
-        scaffoldBackgroundColor: Colors.white,
-        fontFamily: 'Pretendard',
-        appBarTheme: const AppBarTheme(
-          elevation: 0,
-          centerTitle: true,
-        ),
-      ),
-      home: const HomePage(),
+    // 테마 상태 프로바이더에서 현재 테마 모드 가져오기
+    return Consumer<ThemeProvider>(
+      builder: (context, themeProvider, child) {
+        return MaterialApp(
+          title: '캡쳐해보카',
+          theme: AppThemes.lightTheme,
+          darkTheme: AppThemes.darkTheme,
+          themeMode: themeProvider.isDarkMode ? ThemeMode.dark : ThemeMode.light,
+          home: const HomePage(),
+        );
+      },
     );
   }
 }

@@ -421,28 +421,28 @@ class _ModernQuizScreenState extends State<ModernQuizScreen> {
                 ],
               ),
             ),
-                    Container(
-          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          decoration: BoxDecoration(
-            color: Colors.green.shade50,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.check_circle, color: Colors.green, size: 14),
-              SizedBox(width: 8),
-              Text(
-                '정답: $_correctAnswers',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.green.shade700,
-                  fontWeight: FontWeight.w500,
-                ),
+            Container(
+              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.green.shade50,
+                borderRadius: BorderRadius.circular(12),
               ),
-            ],
-          ),
-        ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.check_circle, color: Colors.green, size: 14),
+                  SizedBox(width: 8),
+                  Text(
+                    '정답: $_correctAnswers',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.green.shade700,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
             Row(
               children: [
                 InkWell(
@@ -472,17 +472,18 @@ class _ModernQuizScreenState extends State<ModernQuizScreen> {
             ),
           ],
         ),
-      // 문제 카드
+// 문제 카드 부분 수정
         Container(
           width: double.infinity,
           margin: EdgeInsets.symmetric(vertical: 16),
           padding: EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: Theme.of(context).cardColor, // 테마 카드 색상
             borderRadius: BorderRadius.circular(20),
             boxShadow: [
               BoxShadow(
-                color: Colors.grey.shade200,
+                color:
+                    Theme.of(context).shadowColor.withOpacity(0.1), // 테마 그림자 색상
                 blurRadius: 10,
                 offset: Offset(0, 5),
               ),
@@ -492,7 +493,12 @@ class _ModernQuizScreenState extends State<ModernQuizScreen> {
             children: [
               Text(
                 questionTitle,
-                style: TextStyle(fontSize: 14, color: Colors.grey.shade700),
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? Colors.grey.shade400
+                      : Colors.grey.shade700,
+                ),
               ),
               SizedBox(height: 8),
               Row(
@@ -504,13 +510,19 @@ class _ModernQuizScreenState extends State<ModernQuizScreen> {
                       style: TextStyle(
                         fontSize: 22,
                         fontWeight: FontWeight.bold,
+                        color: Theme.of(context).textTheme.titleLarge?.color,
                       ),
                       textAlign: TextAlign.center,
                     ),
                   ),
                   if (_quizMode == 0) // 단어->의미 모드에서만 발음 버튼 표시
                     IconButton(
-                      icon: Icon(Icons.volume_up, color: Colors.blue),
+                      icon: Icon(
+                        Icons.volume_up,
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? Colors.blue.shade300
+                            : Colors.blue,
+                      ),
                       onPressed: () => widget.onSpeakWord(currentWord.word,
                           accent: _selectedAccent),
                       tooltip: '발음 듣기',
@@ -526,7 +538,9 @@ class _ModernQuizScreenState extends State<ModernQuizScreen> {
                       padding:
                           EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                       decoration: BoxDecoration(
-                        color: Colors.blue.shade50,
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? Colors.blue.shade900.withOpacity(0.3)
+                            : Colors.blue.shade50,
                         borderRadius: BorderRadius.circular(16),
                       ),
                       child: Row(
@@ -537,12 +551,21 @@ class _ModernQuizScreenState extends State<ModernQuizScreen> {
                             style: TextStyle(
                               fontSize: 14,
                               fontStyle: FontStyle.italic,
-                              color: Colors.blue.shade800,
+                              color: Theme.of(context).brightness ==
+                                      Brightness.dark
+                                  ? Colors.blue.shade300
+                                  : Colors.blue.shade800,
                             ),
                           ),
                           SizedBox(width: 4),
-                          Icon(Icons.keyboard_arrow_down,
-                              size: 14, color: Colors.blue.shade700),
+                          Icon(
+                            Icons.keyboard_arrow_down,
+                            size: 14,
+                            color:
+                                Theme.of(context).brightness == Brightness.dark
+                                    ? Colors.blue.shade300
+                                    : Colors.blue.shade700,
+                          ),
                         ],
                       ),
                     ),
@@ -552,7 +575,7 @@ class _ModernQuizScreenState extends State<ModernQuizScreen> {
           ),
         ),
 
-// 보기 목록
+// 보기 목록 수정
         Expanded(
           child: ListView.builder(
             itemCount: _options.length,
@@ -586,9 +609,13 @@ class _ModernQuizScreenState extends State<ModernQuizScreen> {
                         fontWeight: isSelected || (isCorrect && _showResult)
                             ? FontWeight.bold
                             : FontWeight.normal,
-                        color: isSelected || (isCorrect && _showResult)
-                            ? Colors.black
-                            : Colors.black87,
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? (isSelected || (isCorrect && _showResult)
+                                ? Colors.white
+                                : Colors.grey.shade300)
+                            : (isSelected || (isCorrect && _showResult)
+                                ? Colors.black
+                                : Colors.black87),
                       ),
                     ),
                     trailing: _showResult
@@ -598,7 +625,12 @@ class _ModernQuizScreenState extends State<ModernQuizScreen> {
                             height: 24,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              border: Border.all(color: Colors.grey.shade400),
+                              border: Border.all(
+                                color: Theme.of(context).brightness ==
+                                        Brightness.dark
+                                    ? Colors.grey.shade600
+                                    : Colors.grey.shade400,
+                              ),
                             ),
                             child: null,
                           ),
@@ -611,68 +643,88 @@ class _ModernQuizScreenState extends State<ModernQuizScreen> {
 
 // 하단 버튼
         Padding(
-          padding: const EdgeInsets.only(top: 16.0),
-          child: _showResult
-              ? ElevatedButton(
-                  onPressed: _nextQuestion,
-                  child: Text('다음 문제'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue,
-                    foregroundColor: Colors.white,
-                    padding: EdgeInsets.symmetric(horizontal: 30, vertical: 15),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+            padding: const EdgeInsets.only(top: 16.0),
+            child: _showResult
+                ? ElevatedButton(
+                    onPressed: _nextQuestion,
+                    child: Text('다음 문제'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Theme.of(context).colorScheme.primary,
+                      foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 30, vertical: 15),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      elevation: 0,
                     ),
-                    elevation: 0,
-                  ),
-                )
-              : null
-        ),
+                  )
+                : null),
       ]),
     );
   }
+// 다음 메서드들을 ModernQuizScreen 클래스에 추가하거나 업데이트합니다
 
   Color _getOptionColor(bool isCorrect, bool isSelected) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
     if (!_showResult) {
-      return isSelected ? Colors.blue.shade50 : Colors.white;
+      return isSelected
+          ? (isDarkMode
+              ? Colors.blue.shade900.withOpacity(0.3)
+              : Colors.blue.shade50)
+          : Theme.of(context).cardColor;
     }
 
     if (isCorrect) {
-      return Colors.green.shade50;
+      return isDarkMode
+          ? Colors.green.shade900.withOpacity(0.3)
+          : Colors.green.shade50;
     }
 
     if (isSelected && !isCorrect) {
-      return Colors.red.shade50;
+      return isDarkMode
+          ? Colors.red.shade900.withOpacity(0.3)
+          : Colors.red.shade50;
     }
 
-    return Colors.white;
+    return Theme.of(context).cardColor;
   }
 
   Color _getOptionBorderColor(bool isCorrect, bool isSelected) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
     if (!_showResult) {
-      return isSelected ? Colors.blue.shade300 : Colors.grey.shade300;
+      return isSelected
+          ? (isDarkMode ? Colors.blue.shade700 : Colors.blue.shade300)
+          : (isDarkMode ? Colors.grey.shade700 : Colors.grey.shade300);
     }
 
     if (isCorrect) {
-      return Colors.green.shade300;
+      return isDarkMode ? Colors.green.shade700 : Colors.green.shade300;
     }
 
     if (isSelected && !isCorrect) {
-      return Colors.red.shade300;
+      return isDarkMode ? Colors.red.shade700 : Colors.red.shade300;
     }
 
-    return Colors.grey.shade300;
+    return isDarkMode ? Colors.grey.shade700 : Colors.grey.shade300;
   }
 
   Widget _buildResultIcon(bool isCorrect, bool isSelected) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
     if (isCorrect) {
       return Container(
         padding: EdgeInsets.all(4),
         decoration: BoxDecoration(
-          color: Colors.green.shade100,
+          color: isDarkMode
+              ? Colors.green.shade900.withOpacity(0.3)
+              : Colors.green.shade100,
           shape: BoxShape.circle,
         ),
-        child: Icon(Icons.check, color: Colors.green, size: 16),
+        child: Icon(Icons.check,
+            color: isDarkMode ? Colors.green.shade300 : Colors.green, size: 16),
       );
     }
 
@@ -680,10 +732,13 @@ class _ModernQuizScreenState extends State<ModernQuizScreen> {
       return Container(
         padding: EdgeInsets.all(4),
         decoration: BoxDecoration(
-          color: Colors.red.shade100,
+          color: isDarkMode
+              ? Colors.red.shade900.withOpacity(0.3)
+              : Colors.red.shade100,
           shape: BoxShape.circle,
         ),
-        child: Icon(Icons.close, color: Colors.red, size: 16),
+        child: Icon(Icons.close,
+            color: isDarkMode ? Colors.red.shade300 : Colors.red, size: 16),
       );
     }
 

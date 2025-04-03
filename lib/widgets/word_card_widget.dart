@@ -23,17 +23,22 @@ class _WordCardWidgetState extends State<WordCardWidget> {
 
   @override
   Widget build(BuildContext context) {
+    // 테마 색상 지원
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       elevation: 0, // 그림자 제거
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16), // 둥근 모서리
-        side: BorderSide(color: Colors.grey.shade200), // 테두리 추가
+        side: BorderSide(
+          color: isDarkMode ? Colors.grey.shade800 : Colors.grey.shade200
+        ), // 테마에 맞는 테두리
       ),
+      // Card 색상은 테마에서 자동으로 상속됨
       child: ExpansionTile(
         onExpansionChanged: (expanded) {
-          setState(() {
-          });
+          setState(() {});
         },
         shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.all(Radius.circular(16)),
@@ -57,20 +62,30 @@ class _WordCardWidgetState extends State<WordCardWidget> {
             if (widget.word.isMemorized)
               Container(
                 decoration: BoxDecoration(
-                  color: Colors.green.shade50,
+                  color: isDarkMode 
+                      ? Colors.green.shade900.withOpacity(0.3)
+                      : Colors.green.shade50,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.check_circle, color: Colors.green, size: 14),
+                    Icon(
+                      Icons.check_circle, 
+                      color: isDarkMode 
+                          ? Colors.green.shade300 
+                          : Colors.green, 
+                      size: 14
+                    ),
                     SizedBox(width: 4),
                     Text(
                       '암기완료',
                       style: TextStyle(
                         fontSize: 12,
-                        color: Colors.green.shade700,
+                        color: isDarkMode 
+                            ? Colors.green.shade300 
+                            : Colors.green.shade700,
                       ),
                     ),
                   ],
@@ -91,7 +106,7 @@ class _WordCardWidgetState extends State<WordCardWidget> {
                     fontSize: 14.0,
                     fontStyle: FontStyle.italic,
                     letterSpacing: 0.2,
-                    color: Colors.grey[700],
+                    color: isDarkMode ? Colors.grey.shade400 : Colors.grey[700],
                   ),
                 ),
               ),
@@ -99,7 +114,7 @@ class _WordCardWidgetState extends State<WordCardWidget> {
               widget.word.meaning,
               style: TextStyle(
                 fontSize: 15.0,
-                color: Colors.grey[900],
+                color: Theme.of(context).textTheme.bodyMedium?.color,
               ),
             ),
           ],
@@ -145,12 +160,18 @@ class _WordCardWidgetState extends State<WordCardWidget> {
   }
 
   Widget _buildSpeakMenu() {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    
     return PopupMenuButton<AccentType>(
-      icon: const Icon(Icons.volume_up, color: Colors.blue),
+      icon: Icon(
+        Icons.volume_up, 
+        color: isDarkMode ? Colors.blue.shade300 : Colors.blue,
+      ),
       tooltip: '발음 듣기',
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
       ),
+      color: Theme.of(context).cardColor, // 팝업 메뉴 배경색
       onSelected: (AccentType accent) {
         setState(() {
           _selectedAccent = accent;
@@ -177,6 +198,7 @@ class _WordCardWidgetState extends State<WordCardWidget> {
   Widget _buildAccentMenuItem(AccentType accent) {
     String accentName = '';
     IconData iconData = Icons.language;
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     
     switch (accent) {
       case AccentType.american:
@@ -197,20 +219,31 @@ class _WordCardWidgetState extends State<WordCardWidget> {
       children: [
         Icon(
           iconData, 
-          color: _selectedAccent == accent ? Colors.blue : Colors.grey,
+          color: _selectedAccent == accent 
+              ? (isDarkMode ? Colors.blue.shade300 : Colors.blue) 
+              : (isDarkMode ? Colors.grey.shade400 : Colors.grey),
           size: 18,
         ),
         const SizedBox(width: 8),
-        Text(accentName),
+        Text(
+          accentName,
+          style: TextStyle(
+            color: Theme.of(context).textTheme.bodyMedium?.color,
+          ),
+        ),
       ],
     );
   }
 
   Widget _buildExampleItem(String example) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
-        color: Colors.blue.shade50,
+        color: isDarkMode 
+            ? Colors.blue.shade900.withOpacity(0.3) 
+            : Colors.blue.shade50,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Padding(
@@ -224,7 +257,7 @@ class _WordCardWidgetState extends State<WordCardWidget> {
                 style: TextStyle(
                   fontSize: 14,
                   height: 1.4,
-                  color: Colors.blue.shade900,
+                  color: isDarkMode ? Colors.blue.shade100 : Colors.blue.shade900,
                 ),
               ),
             ),
@@ -232,7 +265,7 @@ class _WordCardWidgetState extends State<WordCardWidget> {
               onTap: () => _showExampleSpeakOptions(example),
               child: Icon(
                 Icons.volume_up,
-                color: Colors.blue.shade400,
+                color: isDarkMode ? Colors.blue.shade300 : Colors.blue.shade400,
                 size: 18,
               ),
             ),
@@ -243,10 +276,14 @@ class _WordCardWidgetState extends State<WordCardWidget> {
   }
 
   Widget _buildPhraseItem(String phrase) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
-        color: Colors.grey.shade100,
+        color: isDarkMode 
+            ? Colors.grey.shade800 
+            : Colors.grey.shade100,
         borderRadius: BorderRadius.circular(12),
       ),
       padding: const EdgeInsets.all(12),
@@ -258,6 +295,7 @@ class _WordCardWidgetState extends State<WordCardWidget> {
               style: TextStyle(
                 fontSize: 14,
                 height: 1.4,
+                color: Theme.of(context).textTheme.bodyMedium?.color,
               ),
             ),
           ),
@@ -265,7 +303,7 @@ class _WordCardWidgetState extends State<WordCardWidget> {
             onTap: () => _showExampleSpeakOptions(phrase),
             child: Icon(
               Icons.volume_up,
-              color: Colors.grey.shade600,
+              color: isDarkMode ? Colors.grey.shade400 : Colors.grey.shade600,
               size: 18,
             ),
           ),
@@ -275,13 +313,17 @@ class _WordCardWidgetState extends State<WordCardWidget> {
   }
 
   Widget _buildMemorizeButton() {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    
     return GestureDetector(
       onTap: () => widget.onUpdateMemorizedStatus(widget.word.word, !widget.word.isMemorized),
       child: Container(
         width: double.infinity,
         padding: const EdgeInsets.symmetric(vertical: 12),
         decoration: BoxDecoration(
-          color: widget.word.isMemorized ? Colors.green.shade50 : Colors.grey.shade100,
+          color: widget.word.isMemorized 
+              ? (isDarkMode ? Colors.green.shade900.withOpacity(0.3) : Colors.green.shade50)
+              : (isDarkMode ? Colors.grey.shade800 : Colors.grey.shade100),
           borderRadius: BorderRadius.circular(12),
         ),
         child: Row(
@@ -289,14 +331,18 @@ class _WordCardWidgetState extends State<WordCardWidget> {
           children: [
             Icon(
               widget.word.isMemorized ? Icons.check_circle : Icons.check_circle_outline,
-              color: widget.word.isMemorized ? Colors.green : Colors.grey,
+              color: widget.word.isMemorized 
+                  ? (isDarkMode ? Colors.green.shade300 : Colors.green)
+                  : (isDarkMode ? Colors.grey.shade400 : Colors.grey),
               size: 20,
             ),
             const SizedBox(width: 8),
             Text(
               widget.word.isMemorized ? '암기완료' : '암기하기',
               style: TextStyle(
-                color: widget.word.isMemorized ? Colors.green : Colors.grey.shade700,
+                color: widget.word.isMemorized 
+                    ? (isDarkMode ? Colors.green.shade300 : Colors.green)
+                    : (isDarkMode ? Colors.grey.shade400 : Colors.grey.shade700),
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -307,8 +353,11 @@ class _WordCardWidgetState extends State<WordCardWidget> {
   }
 
   void _showExampleSpeakOptions(String text) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    
     showModalBottomSheet(
       context: context,
+      backgroundColor: Theme.of(context).cardColor, // 바텀시트 배경색
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -318,11 +367,12 @@ class _WordCardWidgetState extends State<WordCardWidget> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text(
+              Text(
                 '발음 선택',
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
+                  color: Theme.of(context).textTheme.titleLarge?.color,
                 ),
               ),
               const SizedBox(height: 16),
@@ -337,6 +387,8 @@ class _WordCardWidgetState extends State<WordCardWidget> {
   }
 
   Widget _buildAccentButton(String text, AccentType accent, String accentName) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    
     return InkWell(
       onTap: () {
         Navigator.pop(context);
@@ -347,18 +399,27 @@ class _WordCardWidgetState extends State<WordCardWidget> {
         padding: const EdgeInsets.symmetric(vertical: 16),
         margin: const EdgeInsets.only(bottom: 8),
         decoration: BoxDecoration(
-          color: Colors.blue.shade50,
+          color: isDarkMode 
+              ? Colors.blue.shade900.withOpacity(0.3)
+              : Colors.blue.shade50,
           borderRadius: BorderRadius.circular(12),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.volume_up, color: Colors.blue.shade700),
+            Icon(
+              Icons.volume_up, 
+              color: isDarkMode 
+                  ? Colors.blue.shade300
+                  : Colors.blue.shade700,
+            ),
             const SizedBox(width: 8),
             Text(
               accentName,
               style: TextStyle(
-                color: Colors.blue.shade700,
+                color: isDarkMode 
+                    ? Colors.blue.shade300
+                    : Colors.blue.shade700,
                 fontWeight: FontWeight.w500,
               ),
             ),

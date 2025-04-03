@@ -20,6 +20,8 @@ dependencies:
   google_fonts: ^6.2.0  # 구글 폰트 사용 (모던 UI 위한 폰트)
   sqflite: ^2.4.2
   path: ^1.8.3     # 파일 경로 관리
+  shared_preferences: ^2.5.3
+  provider: ^6.1.4
 
 dev_dependencies:
   flutter_test:

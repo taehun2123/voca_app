@@ -12,6 +12,8 @@ import '../services/api_key_service.dart';
 import '../widgets/word_card_widget.dart';
 import 'settings_screen.dart';
 import 'test_demo_screen.dart';
+import 'package:provider/provider.dart';
+import '../theme/theme_provider.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({Key? key}) : super(key: key);
@@ -241,191 +243,191 @@ class _HomePageState extends State<HomePage>
 
 // lib/screens/home_screen.dart의 _processBatchImages 함수 수정
 
-Future<void> _processBatchImages() async {
-  // API 키 확인
-  if (_isUsingOpenAI && _openAIService == null) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content:
-            const Text('OpenAI API 키가 설정되지 않았습니다. 설정 화면에서 API 키를 입력해주세요.'),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
+  Future<void> _processBatchImages() async {
+    // API 키 확인
+    if (_isUsingOpenAI && _openAIService == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content:
+              const Text('OpenAI API 키가 설정되지 않았습니다. 설정 화면에서 API 키를 입력해주세요.'),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          action: SnackBarAction(
+            label: '설정',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => SettingsScreen()),
+              ).then((_) => _initializeOpenAI());
+            },
+          ),
         ),
-        action: SnackBarAction(
-          label: '설정',
-          onPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => SettingsScreen()),
-            ).then((_) => _initializeOpenAI());
-          },
-        ),
-      ),
-    );
-    return;
-  }
+      );
+      return;
+    }
 
-  setState(() {
-    _isProcessing = true;
-    _showDetailedProgress = true;
-    _processedImages = 0;
-    _totalImagesToProcess = _batchImages.length;
-    _extractedWordsCount = 0;
-  });
+    setState(() {
+      _isProcessing = true;
+      _showDetailedProgress = true;
+      _processedImages = 0;
+      _totalImagesToProcess = _batchImages.length;
+      _extractedWordsCount = 0;
+    });
 
-  // DAY 입력 다이얼로그 표시
-  final String? selectedDay = await _showDaySelectionDialog();
-  if (selectedDay == null) {
+    // DAY 입력 다이얼로그 표시
+    final String? selectedDay = await _showDaySelectionDialog();
+    if (selectedDay == null) {
+      setState(() {
+        _isProcessing = false;
+      });
+      return;
+    }
+
+    _currentDay = selectedDay;
+
+    // 각 이미지 처리
+    List<WordEntry> allWords = [];
+    for (var i = 0; i < _batchImages.length; i++) {
+      try {
+        setState(() {
+          _processedImages = i + 1;
+        });
+
+        if (_isUsingOpenAI && _openAIService != null) {
+          List<WordEntry> words =
+              await _openAIService!.extractWordsFromImage(_batchImages[i]);
+
+          // 여기서 추출된 단어들에 현재 선택된 DAY 값을 설정
+          for (var j = 0; j < words.length; j++) {
+            words[j] = words[j].copyWith(day: _currentDay);
+          }
+
+          allWords.addAll(words);
+
+          setState(() {
+            _extractedWordsCount += words.length;
+          });
+        }
+      } catch (e) {
+        print('이미지 처리 중 오류: $e');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('이미지 처리 중 오류가 발생했습니다: ${e.toString()}'),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+        );
+      }
+    }
+
     setState(() {
       _isProcessing = false;
+      _batchImages = []; // 배치 이미지 초기화
     });
-    return;
-  }
 
-  _currentDay = selectedDay;
-
-  // 각 이미지 처리
-  List<WordEntry> allWords = [];
-  for (var i = 0; i < _batchImages.length; i++) {
-    try {
-      setState(() {
-        _processedImages = i + 1;
-      });
-
-      if (_isUsingOpenAI && _openAIService != null) {
-        List<WordEntry> words =
-            await _openAIService!.extractWordsFromImage(_batchImages[i]);
-        
-        // 여기서 추출된 단어들에 현재 선택된 DAY 값을 설정
-        for (var j = 0; j < words.length; j++) {
-          words[j] = words[j].copyWith(day: _currentDay);
-        }
-        
-        allWords.addAll(words);
-
-        setState(() {
-          _extractedWordsCount += words.length;
-        });
-      }
-    } catch (e) {
-      print('이미지 처리 중 오류: $e');
+    if (allWords.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('이미지 처리 중 오류가 발생했습니다: ${e.toString()}'),
+          content: Text('단어를 추출하지 못했습니다. 다른 이미지를 시도해보세요.'),
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(10),
           ),
         ),
       );
+      return;
     }
-  }
 
-  setState(() {
-    _isProcessing = false;
-    _batchImages = []; // 배치 이미지 초기화
-  });
+    // 중복 제거 (같은 단어는 하나만 저장)
+    final Map<String, WordEntry> uniqueWords = {};
+    for (var word in allWords) {
+      uniqueWords[word.word] = word;
+    }
 
-  if (allWords.isEmpty) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('단어를 추출하지 못했습니다. 다른 이미지를 시도해보세요.'),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
+    // 단어 편집 화면으로 이동
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => WordEditScreen(
+          words: uniqueWords.values.toList(),
+          dayName: _currentDay,
         ),
       ),
     );
-    return;
-  }
 
-  // 중복 제거 (같은 단어는 하나만 저장)
-  final Map<String, WordEntry> uniqueWords = {};
-  for (var word in allWords) {
-    uniqueWords[word.word] = word;
-  }
+    // 편집 화면에서 돌아왔을 때 저장 처리
+    if (result != null && result is Map) {
+      try {
+        final List<WordEntry> editedWords = result['words'];
+        final String dayName = result['dayName'];
 
-  // 단어 편집 화면으로 이동
-  final result = await Navigator.push(
-    context,
-    MaterialPageRoute(
-      builder: (context) => WordEditScreen(
-        words: uniqueWords.values.toList(),
-        dayName: _currentDay,
-      ),
-    ),
-  );
+        print('단어 편집 결과: ${editedWords.length}개 단어, DAY: $dayName');
 
-  // 편집 화면에서 돌아왔을 때 저장 처리
-  if (result != null && result is Map) {
-    try {
-      final List<WordEntry> editedWords = result['words'];
-      final String dayName = result['dayName'];
+        // DAY 이름이 변경되었다면 처리
+        if (dayName != _currentDay) {
+          print('DAY 이름 변경: $_currentDay -> $dayName');
+          // 새 단어장에 모두 저장
+          for (var i = 0; i < editedWords.length; i++) {
+            editedWords[i] = editedWords[i].copyWith(day: dayName);
+          }
 
-      print('단어 편집 결과: ${editedWords.length}개 단어, DAY: $dayName');
-
-      // DAY 이름이 변경되었다면 처리
-      if (dayName != _currentDay) {
-        print('DAY 이름 변경: $_currentDay -> $dayName');
-        // 새 단어장에 모두 저장
-        for (var i = 0; i < editedWords.length; i++) {
-          editedWords[i] = editedWords[i].copyWith(day: dayName);
+          // DAY 이름 업데이트
+          _currentDay = dayName;
         }
 
-        // DAY 이름 업데이트
-        _currentDay = dayName;
-      }
+        // 저장
+        await _storageService.saveWords(editedWords);
 
-      // 저장
-      await _storageService.saveWords(editedWords);
+        // DAY 컬렉션 정보 저장
+        await _storageService.saveDayCollection(dayName, editedWords.length);
 
-      // DAY 컬렉션 정보 저장
-      await _storageService.saveDayCollection(dayName, editedWords.length);
+        // 상태 업데이트 - 즉시 반영
+        setState(() {
+          if (!_dayCollections.containsKey(dayName)) {
+            _dayCollections[dayName] = [];
+            print('새 컬렉션 생성: $dayName');
+          }
 
-      // 상태 업데이트 - 즉시 반영
-      setState(() {
-        if (!_dayCollections.containsKey(dayName)) {
-          _dayCollections[dayName] = [];
-          print('새 컬렉션 생성: $dayName');
-        }
+          // 새 단어로 기존 단어 교체
+          _dayCollections[dayName] = List.from(editedWords);
+          print('$dayName 컬렉션 업데이트: ${editedWords.length}개 단어');
+        });
 
-        // 새 단어로 기존 단어 교체
-        _dayCollections[dayName] = List.from(editedWords);
-        print('$dayName 컬렉션 업데이트: ${editedWords.length}개 단어');
-      });
+        // 기존 데이터 다시 로드 (확실한 동기화를 위해)
+        _loadSavedWords();
 
-      // 기존 데이터 다시 로드 (확실한 동기화를 위해)
-      _loadSavedWords();
-
-      // 완료 메시지
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('${editedWords.length}개의 단어가 저장되었습니다.'),
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
+        // 완료 메시지
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${editedWords.length}개의 단어가 저장되었습니다.'),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
           ),
-        ),
-      );
+        );
 
-      // 약간의 지연 후 단어장 탭으로 전환
-      Future.delayed(Duration(milliseconds: 300), () {
-        if (mounted) {
-          _tabController.animateTo(1); // 인덱스 1이 단어장 탭
-        }
-      });
-    } catch (e) {
-      print('단어 저장 중 오류: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('단어 저장 중 오류가 발생했습니다: $e'),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+        // 약간의 지연 후 단어장 탭으로 전환
+        Future.delayed(Duration(milliseconds: 300), () {
+          if (mounted) {
+            _tabController.animateTo(1); // 인덱스 1이 단어장 탭
+          }
+        });
+      } catch (e) {
+        print('단어 저장 중 오류: $e');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('단어 저장 중 오류가 발생했습니다: $e'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
     }
   }
-}
 
   Future<String?> _showDaySelectionDialog() async {
     // 다음 DAY 번호 계산 - 안전하게 수정
@@ -462,29 +464,59 @@ Future<void> _processBatchImages() async {
     return showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
+        backgroundColor: Theme.of(context).cardColor, // 다이얼로그 배경색
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
         ),
-        title: Text('단어장 설정'),
+        title: Text(
+          '단어장 설정',
+          style: TextStyle(
+            color: Theme.of(context).textTheme.titleLarge?.color, // 제목 색상
+          ),
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('이 단어들을 저장할 DAY를 입력하세요'),
+            Text(
+              '이 단어들을 저장할 DAY를 입력하세요',
+              style: TextStyle(
+                color:
+                    Theme.of(context).textTheme.bodyMedium?.color, // 내용 텍스트 색상
+              ),
+            ),
             SizedBox(height: 16),
             TextField(
               controller: controller,
+              style: TextStyle(
+                color:
+                    Theme.of(context).textTheme.bodyLarge?.color, // 입력 텍스트 색상
+              ),
               decoration: InputDecoration(
                 hintText: '예: DAY 1',
+                hintStyle: TextStyle(
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? Colors.grey.shade600
+                      : Colors.grey.shade400,
+                ),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: Colors.grey.shade300),
+                  borderSide: BorderSide(
+                    color: Theme.of(context).dividerColor, // 테두리 색상
+                  ),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: Colors.blue, width: 2),
+                  borderSide: BorderSide(
+                    color: Theme.of(context).colorScheme.primary, // 포커스 테두리 색상
+                    width: 2,
+                  ),
                 ),
                 contentPadding:
                     EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                fillColor: Theme.of(context).brightness == Brightness.dark
+                    ? Colors.grey.shade800.withOpacity(0.5)
+                    : Colors.white, // 입력창 배경색
+                filled: true,
               ),
             ),
           ],
@@ -492,12 +524,19 @@ Future<void> _processBatchImages() async {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(null),
-            child: Text('취소', style: TextStyle(color: Colors.grey.shade700)),
+            child: Text('취소'),
+            style: TextButton.styleFrom(
+              foregroundColor: Theme.of(context).brightness == Brightness.dark
+                  ? Colors.grey.shade300
+                  : Colors.grey.shade700,
+            ),
           ),
           ElevatedButton(
             onPressed: () => Navigator.of(context).pop(controller.text),
             child: Text('확인'),
             style: ElevatedButton.styleFrom(
+              foregroundColor: Theme.of(context).colorScheme.onPrimary,
+              backgroundColor: Theme.of(context).colorScheme.primary,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
@@ -537,18 +576,41 @@ Future<void> _processBatchImages() async {
     return Scaffold(
       appBar: AppBar(
         elevation: 0,
-        backgroundColor: Colors.white,
+        backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
         title: Text(
           '캡쳐해보카',
           style: TextStyle(
-            color: Colors.black87,
+            color: Theme.of(context).brightness == Brightness.dark
+                ? Colors.white
+                : Colors.black87,
             fontWeight: FontWeight.w600,
             fontSize: 20,
           ),
         ),
         actions: [
+          // 다크모드 토글 아이콘 추가
           IconButton(
-            icon: Icon(Icons.settings, color: Colors.black54),
+            icon: Icon(
+              Provider.of<ThemeProvider>(context).isDarkMode
+                  ? Icons.light_mode
+                  : Icons.dark_mode,
+              color: Theme.of(context).brightness == Brightness.dark
+                  ? Colors.amber.shade300
+                  : Colors.amber.shade800,
+            ),
+            onPressed: () {
+              // 테마 전환
+              Provider.of<ThemeProvider>(context, listen: false).toggleTheme();
+            },
+            tooltip: '테마 변경',
+          ),
+          IconButton(
+            icon: Icon(
+              Icons.settings,
+              color: Theme.of(context).brightness == Brightness.dark
+                  ? Colors.white70
+                  : Colors.black54,
+            ),
             onPressed: () {
               Navigator.push(
                 context,
@@ -560,9 +622,10 @@ Future<void> _processBatchImages() async {
         ],
         bottom: TabBar(
           controller: _tabController,
-          labelColor: Colors.blue,
-          unselectedLabelColor: Colors.grey.shade600,
-          indicatorColor: Colors.blue,
+          labelColor: Theme.of(context).tabBarTheme.labelColor,
+          unselectedLabelColor:
+              Theme.of(context).tabBarTheme.unselectedLabelColor,
+          indicatorColor: Theme.of(context).tabBarTheme.indicatorColor,
           indicatorWeight: 3,
           labelStyle: TextStyle(fontWeight: FontWeight.w600),
           tabs: const [
@@ -963,14 +1026,18 @@ Future<void> _processBatchImages() async {
     return Column(
       children: [
         // DAY 선택 드롭다운 및 관리 버튼
+        // _buildWordListTab() 함수 내 단어장 선택 드롭다운 수정 부분
         Container(
           padding: const EdgeInsets.all(16),
           margin: const EdgeInsets.only(bottom: 8),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color:
+                Theme.of(context).cardColor, // 하드코딩된 Colors.white 대신 테마 색상 사용
             boxShadow: [
               BoxShadow(
-                color: Colors.grey.shade200,
+                color: Theme.of(context)
+                    .shadowColor
+                    .withOpacity(0.1), // 테마 그림자 색상 사용
                 offset: Offset(0, 2),
                 blurRadius: 4,
               ),
@@ -984,7 +1051,10 @@ Future<void> _processBatchImages() async {
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
-                  color: Colors.grey.shade700,
+                  color: Theme.of(context)
+                      .textTheme
+                      .bodyMedium
+                      ?.color, // 테마 텍스트 색상 사용
                 ),
               ),
               SizedBox(height: 12),
@@ -996,7 +1066,10 @@ Future<void> _processBatchImages() async {
                           EdgeInsets.symmetric(horizontal: 16, vertical: 0),
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.grey.shade300),
+                        border: Border.all(
+                          color: Theme.of(context).dividerColor, // 테마 구분선 색상 사용
+                        ),
+                        color: Theme.of(context).cardColor, // 드롭다운 배경색
                       ),
                       child: DropdownButtonHideUnderline(
                         child: DropdownButton<String>(
@@ -1017,14 +1090,21 @@ Future<void> _processBatchImages() async {
                                     padding: EdgeInsets.symmetric(
                                         horizontal: 8, vertical: 4),
                                     decoration: BoxDecoration(
-                                      color: Colors.blue.shade50,
+                                      color: Theme.of(context).brightness ==
+                                              Brightness.dark
+                                          ? Colors.blue.shade900
+                                              .withOpacity(0.3)
+                                          : Colors.blue.shade50, // 다크모드 지원
                                       borderRadius: BorderRadius.circular(16),
                                     ),
                                     child: Text(
                                       '$count단어',
                                       style: TextStyle(
                                         fontSize: 12,
-                                        color: Colors.blue.shade700,
+                                        color: Theme.of(context).brightness ==
+                                                Brightness.dark
+                                            ? Colors.blue.shade300
+                                            : Colors.blue.shade700, // 다크모드 지원
                                       ),
                                     ),
                                   ),
@@ -1039,11 +1119,21 @@ Future<void> _processBatchImages() async {
                               });
                             }
                           },
-                          icon: Icon(Icons.keyboard_arrow_down),
+                          icon: Icon(
+                            Icons.keyboard_arrow_down,
+                            color: Theme.of(context)
+                                .iconTheme
+                                .color, // 테마 아이콘 색상 사용
+                          ),
                           style: TextStyle(
-                            color: Colors.black87,
+                            color: Theme.of(context)
+                                .textTheme
+                                .bodyLarge
+                                ?.color, // 테마 텍스트 색상 사용
                             fontSize: 16,
                           ),
+                          dropdownColor:
+                              Theme.of(context).cardColor, // 드롭다운 메뉴 배경색
                         ),
                       ),
                     ),
@@ -1051,11 +1141,18 @@ Future<void> _processBatchImages() async {
                   SizedBox(width: 12),
                   Container(
                     decoration: BoxDecoration(
-                      color: Colors.red.shade50,
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? Colors.red.shade900.withOpacity(0.3)
+                          : Colors.red.shade50, // 다크모드 지원
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: IconButton(
-                      icon: Icon(Icons.delete, color: Colors.red.shade700),
+                      icon: Icon(
+                        Icons.delete,
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? Colors.red.shade300
+                            : Colors.red.shade700, // 다크모드 지원
+                      ),
                       tooltip: '단어장 삭제',
                       onPressed: () => _showDeleteDayDialog(_currentDay),
                     ),
@@ -1379,10 +1476,12 @@ Future<void> _processBatchImages() async {
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: Theme.of(context).cardColor, // 테마에 맞는 배경 색상
             boxShadow: [
               BoxShadow(
-                color: Colors.grey.shade200,
+                color: Theme.of(context)
+                    .shadowColor
+                    .withOpacity(0.1), // 테마에 맞는 그림자 색상
                 offset: Offset(0, 2),
                 blurRadius: 4,
               ),
@@ -1396,7 +1495,9 @@ Future<void> _processBatchImages() async {
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
-                  color: Colors.grey.shade700,
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? Colors.grey.shade300 // 다크모드 텍스트 색상
+                      : Colors.grey.shade700, // 라이트모드 텍스트 색상
                 ),
               ),
               SizedBox(height: 12),
@@ -1404,7 +1505,12 @@ Future<void> _processBatchImages() async {
                 padding: EdgeInsets.symmetric(horizontal: 16, vertical: 0),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.grey.shade300),
+                  border: Border.all(
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? Colors.grey.shade700 // 다크모드 테두리 색상
+                        : Colors.grey.shade300, // 라이트모드 테두리 색상
+                  ),
+                  color: Theme.of(context).cardColor, // 테마에 맞는 배경 색상
                 ),
                 child: DropdownButtonHideUnderline(
                   child: DropdownButton<String>(
@@ -1419,19 +1525,34 @@ Future<void> _processBatchImages() async {
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text(day),
+                            Text(
+                              day,
+                              style: TextStyle(
+                                color: Theme.of(context)
+                                    .textTheme
+                                    .bodyLarge
+                                    ?.color,
+                              ),
+                            ),
                             Container(
                               padding: EdgeInsets.symmetric(
                                   horizontal: 8, vertical: 4),
                               decoration: BoxDecoration(
-                                color: Colors.green.shade50,
+                                color: Theme.of(context).brightness ==
+                                        Brightness.dark
+                                    ? Colors.green.shade900
+                                        .withOpacity(0.3) // 다크모드 배경
+                                    : Colors.green.shade50, // 라이트모드 배경
                                 borderRadius: BorderRadius.circular(16),
                               ),
                               child: Text(
                                 '$count단어',
                                 style: TextStyle(
                                   fontSize: 12,
-                                  color: Colors.green.shade700,
+                                  color: Theme.of(context).brightness ==
+                                          Brightness.dark
+                                      ? Colors.green.shade300 // 다크모드 텍스트 색상
+                                      : Colors.green.shade700, // 라이트모드 텍스트 색상
                                 ),
                               ),
                             ),
@@ -1446,11 +1567,19 @@ Future<void> _processBatchImages() async {
                         });
                       }
                     },
-                    icon: Icon(Icons.keyboard_arrow_down),
+                    icon: Icon(
+                      Icons.keyboard_arrow_down,
+                      color: Theme.of(context).iconTheme.color, // 테마에 맞는 아이콘 색상
+                    ),
                     style: TextStyle(
-                      color: Colors.black87,
+                      color: Theme.of(context)
+                          .textTheme
+                          .bodyLarge
+                          ?.color, // 테마에 맞는 텍스트 색상
                       fontSize: 16,
                     ),
+                    dropdownColor:
+                        Theme.of(context).cardColor, // 드롭다운 배경색을 테마에 맞게 설정
                   ),
                 ),
               ),
@@ -1555,16 +1684,18 @@ Future<void> _processBatchImages() async {
       );
     }
 
-    // 단어장 선택 영역 추가
+// 단어장 선택 영역 추가
     return Column(
       children: [
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: Theme.of(context).cardColor, // 테마 배경색 적용
             boxShadow: [
               BoxShadow(
-                color: Colors.grey.shade200,
+                color: Theme.of(context)
+                    .shadowColor
+                    .withOpacity(0.1), // 테마 그림자색 적용
                 offset: Offset(0, 2),
                 blurRadius: 4,
               ),
@@ -1578,22 +1709,27 @@ Future<void> _processBatchImages() async {
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
-                  color: Colors.grey.shade700,
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? Colors.grey.shade300 // 다크모드 텍스트 색상
+                      : Colors.grey.shade700, // 라이트모드 텍스트 색상
                 ),
               ),
               SizedBox(height: 12),
               Row(
                 children: [
-// _buildWordListTab() 함수 내부 수정 부분
-
-// 상단 드롭다운 메뉴 표시 부분
                   Expanded(
                     child: Container(
                       padding:
                           EdgeInsets.symmetric(horizontal: 16, vertical: 0),
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.grey.shade300),
+                        border: Border.all(
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? Colors.grey.shade700 // 다크모드 테두리
+                              : Colors.grey.shade300, // 라이트모드 테두리
+                        ),
+                        // 드롭다운 배경색도 테마 적용
+                        color: Theme.of(context).cardColor,
                       ),
                       child: DropdownButtonHideUnderline(
                         child: DropdownButton<String>(
@@ -1612,19 +1748,36 @@ Future<void> _processBatchImages() async {
                                 mainAxisAlignment:
                                     MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Text(day),
+                                  Text(
+                                    day,
+                                    style: TextStyle(
+                                      color: Theme.of(context)
+                                          .textTheme
+                                          .bodyLarge
+                                          ?.color, // 테마 텍스트 색상
+                                    ),
+                                  ),
                                   Container(
                                     padding: EdgeInsets.symmetric(
                                         horizontal: 8, vertical: 4),
                                     decoration: BoxDecoration(
-                                      color: Colors.blue.shade50,
+                                      color: Theme.of(context).brightness ==
+                                              Brightness.dark
+                                          ? Colors.blue.shade900
+                                              .withOpacity(0.3) // 다크모드 배지 배경
+                                          : Colors.blue.shade50, // 라이트모드 배지 배경
                                       borderRadius: BorderRadius.circular(16),
                                     ),
                                     child: Text(
                                       '$count단어',
                                       style: TextStyle(
                                         fontSize: 12,
-                                        color: Colors.blue.shade700,
+                                        color: Theme.of(context).brightness ==
+                                                Brightness.dark
+                                            ? Colors
+                                                .blue.shade300 // 다크모드 배지 텍스트
+                                            : Colors
+                                                .blue.shade700, // 라이트모드 배지 텍스트
                                       ),
                                     ),
                                   ),
@@ -1641,11 +1794,20 @@ Future<void> _processBatchImages() async {
                               });
                             }
                           },
-                          icon: Icon(Icons.keyboard_arrow_down),
+                          icon: Icon(
+                            Icons.keyboard_arrow_down,
+                            color:
+                                Theme.of(context).iconTheme.color, // 테마 아이콘 색상
+                          ),
                           style: TextStyle(
-                            color: Colors.black87,
+                            color: Theme.of(context)
+                                .textTheme
+                                .bodyLarge
+                                ?.color, // 테마 텍스트 색상
                             fontSize: 16,
                           ),
+                          dropdownColor:
+                              Theme.of(context).cardColor, // 드롭다운 메뉴 배경색 테마 적용
                         ),
                       ),
                     ),
@@ -1655,7 +1817,6 @@ Future<void> _processBatchImages() async {
             ],
           ),
         ),
-
         // 퀴즈 내용
         Expanded(
           child: ModernQuizScreen(

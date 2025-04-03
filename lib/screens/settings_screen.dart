@@ -446,7 +446,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             '• 이미지는 분석을 위해 OpenAI 서버로 전송되며, 처리 후 삭제됩니다.\n\n'
                             '• 더 나은 인식 결과를 위해 밝고 선명한 이미지를 사용하세요.\n\n'
                             '• 사용료는 달러로 0.01 ~ 0.02 까지 발생합니다 참고 바랍니다.\n\n'
-                            '• 무슨 일이 있어도 해당 API 키는 개발자에게 전송되지 않습니다! 안심하고 사용하세요.\n\n',
+                            '• 무슨 일이 있어도 해당 API 키는 개발자에게 전송되지 않습니다! 안심하고 사용하세요.\n\n'
+                            '• 개발자 연락처: devhundeveloper@gmail.com 버그 수정/제안 등 건의 부탁드립니다!',
                             style: TextStyle(color: Colors.grey[700]),
                           ),
                           SizedBox(height: 16),

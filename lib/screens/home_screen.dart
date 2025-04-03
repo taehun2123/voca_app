@@ -539,7 +539,7 @@ Future<void> _processBatchImages() async {
         elevation: 0,
         backgroundColor: Colors.white,
         title: Text(
-          '영어 단어 학습',
+          '캡쳐해보카',
           style: TextStyle(
             color: Colors.black87,
             fontWeight: FontWeight.w600,

@@ -171,7 +171,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  // API 발급 및 결제 방법 다이얼로그 표시 (간략 버전)
+// API 발급 및 결제 방법 다이얼로그 표시 (간략 버전)
   void _showApiRegistrationDialog() {
     showDialog(
       context: context,
@@ -248,29 +248,36 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
         ),
         actions: [
-          TextButton(
-            onPressed: () {
-              // 상세 가이드 화면으로 이동
-              Navigator.of(context).pop();
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => ApiGuideScreen()),
-              );
-            },
-            child: Text('이미지로 보기'),
-          ),
-          TextButton(
-            onPressed: () {
-              Clipboard.setData(ClipboardData(text: 'https://platform.openai.com/'));
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('OpenAI 사이트 주소가 클립보드에 복사되었습니다')),
-              );
-            },
-            child: Text('사이트 주소 복사'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: Text('확인'),
+          // 버튼들을 가로로 배치하기 위한 Row
+          Row(
+            // 버튼들 사이의 간격을 균등하게 분배
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              TextButton(
+                onPressed: () {
+                  // 상세 가이드 화면으로 이동
+                  Navigator.of(context).pop();
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => ApiGuideScreen()),
+                  );
+                },
+                child: Text('상세 보기'),
+              ),
+              TextButton(
+                onPressed: () {
+                  Clipboard.setData(ClipboardData(text: 'https://platform.openai.com/'));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('OpenAI 사이트 주소가 클립보드에 복사되었습니다')),
+                  );
+                },
+                child: Text('사이트 주소 복사'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: Text('확인'),
+              ),
+            ],
           ),
         ],
       ),

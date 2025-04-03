@@ -1,4 +1,7 @@
+// lib/main.dart 파일 수정
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';  // SystemChrome 사용을 위한 import 추가
 import 'package:provider/provider.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:vocabulary_app/services/db_service.dart';
@@ -9,6 +12,12 @@ import 'services/api_key_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // 화면 방향 설정 - 세로 모드만 허용하여 오버플로우 문제 방지
+  await SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.portraitDown,
+  ]);
   
   // 데이터베이스 서비스 초기화
   final dbService = DBService();

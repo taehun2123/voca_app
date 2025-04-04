@@ -27,6 +27,7 @@ class _ModernQuizScreenState extends State<ModernQuizScreen> {
   bool _showResult = false;
   int _correctAnswers = 0;
   int _totalAnswered = 0;
+
   bool _isReady = false;
 
   // 퀴즈 모드 (0: 단어->의미, 1: 의미->단어)
@@ -406,43 +407,64 @@ class _ModernQuizScreenState extends State<ModernQuizScreen> {
             Container(
               padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color: Colors.grey.shade100,
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? Colors.grey.shade800
+                    : Colors.grey.shade100,
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Row(
                 children: [
                   Icon(Icons.format_list_numbered,
-                      size: 14, color: Colors.grey.shade700),
+                      size: 14,
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? Colors.grey.shade300
+                          : Colors.grey.shade700),
                   SizedBox(width: 4),
                   Text(
                     '${_currentIndex + 1} / ${_quizWords.length}',
-                    style: TextStyle(fontSize: 14, color: Colors.grey.shade700),
+                    style: TextStyle(
+                        fontSize: 14,
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? Colors.grey.shade300
+                            : Colors.grey.shade700),
                   ),
                 ],
               ),
             ),
+
+// 정답 수 컨테이너
             Container(
               padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               decoration: BoxDecoration(
-                color: Colors.green.shade50,
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? Colors.green.shade900.withOpacity(0.3)
+                    : Colors.green.shade50,
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.check_circle, color: Colors.green, size: 14),
+                  Icon(Icons.check_circle,
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? Colors.green.shade300
+                          : Colors.green,
+                      size: 14),
                   SizedBox(width: 8),
                   Text(
                     '정답: $_correctAnswers',
                     style: TextStyle(
                       fontSize: 14,
-                      color: Colors.green.shade700,
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? Colors.green.shade300
+                          : Colors.green.shade700,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
                 ],
               ),
             ),
+
+// 퀴즈 모드 토글 버튼
             Row(
               children: [
                 InkWell(
@@ -450,7 +472,9 @@ class _ModernQuizScreenState extends State<ModernQuizScreen> {
                   child: Container(
                     padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
-                      color: Colors.purple.shade50,
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? Colors.purple.shade900.withOpacity(0.3)
+                          : Colors.purple.shade50,
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Row(
@@ -458,12 +482,19 @@ class _ModernQuizScreenState extends State<ModernQuizScreen> {
                         Text(
                           _quizMode == 0 ? '단어→의미' : '의미→단어',
                           style: TextStyle(
-                            color: Colors.purple.shade700,
+                            color:
+                                Theme.of(context).brightness == Brightness.dark
+                                    ? Colors.purple.shade300
+                                    : Colors.purple.shade700,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
                         Icon(Icons.swap_horiz,
-                            size: 14, color: Colors.purple.shade700),
+                            size: 14,
+                            color:
+                                Theme.of(context).brightness == Brightness.dark
+                                    ? Colors.purple.shade300
+                                    : Colors.purple.shade700),
                       ],
                     ),
                   ),

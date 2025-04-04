@@ -539,7 +539,11 @@ class _WordEditScreenState extends State<WordEditScreen> {
                   });
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green,
+                  backgroundColor:
+                      Theme.of(context).brightness == Brightness.dark
+                          ? Colors.green.shade600 // 다크모드에서는 밝은 초록색
+                          : Colors.green, // 라이트모드에서는 기본 초록색
+                  foregroundColor: Colors.white, // 텍스트는 항상 흰색으로
                 ),
                 child: Text('저장'),
               ),

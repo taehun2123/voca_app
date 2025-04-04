@@ -34,7 +34,7 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
 
     try {
       final usages = await _purchaseService.getRemainingUsages();
-      
+
       setState(() {
         _remainingUsages = usages;
         _isLoading = false;
@@ -50,7 +50,8 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
   }
 
   void _subscribeToPurchaseUpdates() {
-    _purchaseStateSubscription = _purchaseService.purchaseStateStream.listen((state) {
+    _purchaseStateSubscription =
+        _purchaseService.purchaseStateStream.listen((state) {
       switch (state) {
         case PurchaseState.notAvailable:
           setState(() {
@@ -219,9 +220,9 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
                           ],
                         ),
                       ),
-                      
+
                       SizedBox(height: 24),
-                      
+
                       // 구매 옵션 설명
                       Text(
                         '사용권 구매',
@@ -239,7 +240,7 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
                         ),
                       ),
                       SizedBox(height: 24),
-                      
+
                       // 상품 목록
                       if (products.isEmpty)
                         Center(
@@ -256,10 +257,11 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
                           ),
                         )
                       else
-                        ...products.map((product) => _buildProductCard(product)),
-                      
+                        ...products
+                            .map((product) => _buildProductCard(product)),
+
                       SizedBox(height: 24),
-                      
+
                       // 설명
                       Container(
                         padding: const EdgeInsets.all(16),
@@ -301,14 +303,14 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
                 ),
     );
   }
-  
+
   Widget _buildProductCard(ProductDetails product) {
     // 상품 ID에 따라 정보 설정
     String title = '알 수 없는 상품';
     String description = '';
     int usageCount = 0;
     IconData productIcon = Icons.credit_card;
-    
+
     if (product.id.contains('10')) {
       title = '10회 추가 이용권';
       description = '단어장 생성 10회 이용권';
@@ -325,10 +327,10 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
       usageCount = 100;
       productIcon = Icons.auto_stories;
     }
-    
+
     final theme = Theme.of(context);
     final isDarkMode = theme.brightness == Brightness.dark;
-    
+
     return Card(
       margin: EdgeInsets.only(bottom: 16),
       elevation: 0,
@@ -369,13 +371,18 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 16,
+                        color: isDarkMode
+                            ? Colors.white
+                            : theme.textTheme.bodyLarge?.color,
                       ),
                     ),
                     SizedBox(height: 4),
                     Text(
                       description,
                       style: TextStyle(
-                        color: isDarkMode ? Colors.grey.shade300 : Colors.grey.shade700,
+                        color: isDarkMode
+                            ? Colors.grey.shade300
+                            : Colors.grey.shade700,
                       ),
                     ),
                     SizedBox(height: 4),
@@ -384,13 +391,16 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
                         Icon(
                           Icons.add_circle_outline,
                           size: 14,
-                          color: isDarkMode ? Colors.green.shade300 : Colors.green,
+                          color:
+                              isDarkMode ? Colors.green.shade300 : Colors.green,
                         ),
                         SizedBox(width: 4),
                         Text(
                           '+$usageCount회',
                           style: TextStyle(
-                            color: isDarkMode ? Colors.green.shade300 : Colors.green,
+                            color: isDarkMode
+                                ? Colors.green.shade300
+                                : Colors.green,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
@@ -411,7 +421,9 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
                   product.price,
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
-                    color: isDarkMode ? Colors.blue.shade300 : Colors.blue.shade800,
+                    color: isDarkMode
+                        ? Colors.blue.shade300
+                        : Colors.blue.shade800,
                   ),
                 ),
               ),
@@ -421,10 +433,10 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
       ),
     );
   }
-  
+
   Widget _buildInfoItem(String title, String description) {
     final theme = Theme.of(context);
-    
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(

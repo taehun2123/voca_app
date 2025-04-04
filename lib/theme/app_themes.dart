@@ -132,7 +132,7 @@ class AppThemes {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
         ),
-        side: BorderSide(color: Colors.green.shade200), // 다크 모드 버튼 테두리 색상
+        side: BorderSide(color: Colors.green.shade100), // 다크 모드 버튼 테두리 색상
       ),
     ),
     textButtonTheme: TextButtonThemeData(
@@ -140,7 +140,7 @@ class AppThemes {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
         ),
-        foregroundColor: Colors.green.shade200, // 다크 모드 텍스트 버튼 색상
+        foregroundColor: Colors.white, // 다크 모드 텍스트 버튼 색상
       ),
     ),
     inputDecorationTheme: InputDecorationTheme(

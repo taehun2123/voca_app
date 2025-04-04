@@ -40,7 +40,6 @@ class _HomePageState extends State<HomePage>
   DateTime? _lastTapTime;
 
   OpenAIVisionService? _openAIService;
-  bool _isUsingOpenAI = false;
 
   bool _isProcessing = false;
   List<File> _batchImages = [];
@@ -54,6 +53,7 @@ class _HomePageState extends State<HomePage>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _tabController = TabController(length: 4, vsync: this);
+    _tabController.addListener(_handleTabChange);
     _storageService.validateStorage();
     print('홈 화면 초기화 - 저장된 단어 로드 시작');
     _loadSavedWords();
@@ -101,14 +101,11 @@ class _HomePageState extends State<HomePage>
       if (apiKey.isNotEmpty) {
         // API 키가 있으면 서비스 초기화
         _openAIService = OpenAIVisionService();
-        setState(() {
-          _isUsingOpenAI = true;
-        });
+        setState(() {});
         print('OpenAI 서비스 초기화 완료');
       } else {
         // API 키가 없으면 서비스 초기화 실패
         setState(() {
-          _isUsingOpenAI = false;
           _openAIService = null;
         });
         print('API 키가 비어 있어 OpenAI 서비스를 초기화할 수 없습니다');
@@ -116,7 +113,6 @@ class _HomePageState extends State<HomePage>
     } catch (e) {
       print('OpenAI 서비스 초기화 중 오류: $e');
       setState(() {
-        _isUsingOpenAI = false;
         _openAIService = null;
       });
     }
@@ -125,6 +121,8 @@ class _HomePageState extends State<HomePage>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    // 탭 변경 리스너 제거
+    _tabController.removeListener(_handleTabChange);
     _tabController.dispose();
     _ttsService.dispose();
     super.dispose();
@@ -147,7 +145,28 @@ class _HomePageState extends State<HomePage>
     }
   }
 
-// lib/screens/home_screen.dart의 _loadSavedWords() 함수 수정
+  void _handleTabChange() {
+    // 이미지 처리 중인 경우 탭 변경 방지
+    if (_isProcessing && _tabController.indexIsChanging) {
+      // 처리 중에는 첫 번째 탭으로 강제 복귀
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _tabController.animateTo(0); // 첫 번째 탭 인덱스(0)으로 되돌림
+
+        // 사용자에게 알림
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('이미지 처리 중에는 탭을 변경할 수 없습니다.'),
+            behavior: SnackBarBehavior.floating,
+            duration: Duration(seconds: 2),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+        );
+      });
+    }
+  }
+
   Future<void> _loadSavedWords() async {
     try {
       print('단어 로드 시작');
@@ -302,6 +321,7 @@ class _HomePageState extends State<HomePage>
         return;
       }
     }
+
     // 사용량 체크
     if (_remainingUsages <= 0) {
       // 사용량 부족 시 구매 화면으로 안내
@@ -312,6 +332,20 @@ class _HomePageState extends State<HomePage>
             label: '충전하기',
             onPressed: _navigateToPurchaseScreen,
           ),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+      );
+      return;
+    }
+
+    // 이미 처리 중이라면 중복 요청 방지
+    if (_isProcessing) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('이미지 처리가 이미 진행 중입니다.'),
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(10),
@@ -340,6 +374,9 @@ class _HomePageState extends State<HomePage>
       return;
     }
 
+    // 여기에 크레딧 차감 여부를 추적하는 변수 추가
+    bool creditUsed = true;
+
     setState(() {
       _isProcessing = true;
       _showDetailedProgress = true;
@@ -363,6 +400,8 @@ class _HomePageState extends State<HomePage>
 
     // 각 이미지 처리
     List<WordEntry> allWords = [];
+    bool hasError = false; // 오류 발생 여부 추적
+
     for (var i = 0; i < _batchImages.length; i++) {
       try {
         setState(() {
@@ -370,20 +409,7 @@ class _HomePageState extends State<HomePage>
         });
 
         if (_openAIService == null) {
-          print('OpenAI 서비스가 초기화되지 않았습니다');
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('단어 인식 서비스를 사용할 수 없습니다'),
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
-
-          setState(() {
-            _isProcessing = false;
-            _batchImages = [];
-          });
-
-          return;
+          throw Exception('OpenAI 서비스가 초기화되지 않았습니다');
         }
 
         List<WordEntry> words =
@@ -415,9 +441,13 @@ class _HomePageState extends State<HomePage>
       }
     }
 
-    // 모든 이미지 처리 중 오류가 발생하고 단어를 하나도 추출하지 못했을 경우 크레딧 복구
-    if (hasError && allWords.isEmpty) {
-      await _purchaseService.addUsages(1);
+    // 이미지 처리 중 오류 발생 또는 단어를 하나도 추출하지 못한 경우 크레딧 복구
+    if (hasError || allWords.isEmpty) {
+      if (creditUsed) {
+        print('오류 발생 또는 단어 추출 실패로 크레딧 복구');
+        await _purchaseService.addUsages(1);
+        creditUsed = false; // 크레딧 반환됨
+      }
     }
 
     setState(() {
@@ -438,10 +468,71 @@ class _HomePageState extends State<HomePage>
       return;
     }
 
-    // 중복 제거 (같은 단어는 하나만 저장)
+    // 현재 선택된 DAY의 기존 단어들 가져오기
+    List<WordEntry> existingWords = _dayCollections[_currentDay] ?? [];
+
+    // 추출된 단어들 중에서 기존 단어들과 중복되는 단어들 필터링
+    List<String> existingWordTexts =
+        existingWords.map((word) => word.word).toList();
+    List<String> duplicateWords = [];
+
+    // 새로운 단어 맵 생성 (중복 제거)
     final Map<String, WordEntry> uniqueWords = {};
     for (var word in allWords) {
+      // 이미 맵에 있는 단어는 스킵 (동일 배치 내 중복 제거)
+      if (uniqueWords.containsKey(word.word)) {
+        continue;
+      }
+
+      // 이미 저장된 단어인지 확인
+      if (existingWordTexts.contains(word.word)) {
+        duplicateWords.add(word.word);
+        continue; // 중복 단어는 건너뜀
+      }
+
+      // 중복이 아닌 단어만 맵에 추가
       uniqueWords[word.word] = word;
+    }
+
+    // 중복 단어가 있었다면 사용자에게 알림
+    if (duplicateWords.isNotEmpty) {
+      // 최대 3개만 표시하고 나머지는 ...으로 표시
+      String displayDuplicates = duplicateWords.length <= 3
+          ? duplicateWords.join(', ')
+          : duplicateWords.take(3).join(', ') +
+              ' 외 ${duplicateWords.length - 3}개';
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+              '이미 저장된 단어 $displayDuplicates ${duplicateWords.length > 3 ? "등" : ""}이(가) 제외되었습니다.'),
+          duration: Duration(seconds: 3),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+      );
+    }
+
+    // 중복 제거 후 남은 단어가 없는 경우 크레딧 복구
+    if (uniqueWords.isEmpty) {
+      if (creditUsed) {
+        print('중복 제거 후 저장할 단어가 없어 크레딧 복구');
+        await _purchaseService.addUsages(1);
+        creditUsed = false; // 크레딧 반환됨
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('추출된 모든 단어가 이미 저장되어 있습니다.'),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+      );
+      return;
     }
 
     // 단어 편집 화면으로 이동
@@ -455,11 +546,40 @@ class _HomePageState extends State<HomePage>
       ),
     );
 
-    // 편집 화면에서 돌아왔을 때 저장 처리
+    // 편집 화면에서 돌아왔을 때 처리
     if (result != null && result is Map) {
+      // 다시 시도 요청인 경우
+      if (result.containsKey('retry') && result['retry'] == true) {
+        if (creditUsed) {
+          print('사용자가 다시 인식하기를 요청하여 크레딧 유지');
+          // 크레딧은 반환하지 않고 유지 (다시 이미지 촬영으로 돌아감)
+        }
+        return;
+      }
+
       try {
         final List<WordEntry> editedWords = result['words'];
         final String dayName = result['dayName'];
+
+        // 편집 후 단어가 없는 경우 크레딧 복구
+        if (editedWords.isEmpty) {
+          if (creditUsed) {
+            print('편집 후 저장할 단어가 없어 크레딧 복구');
+            await _purchaseService.addUsages(1);
+            creditUsed = false; // 크레딧 반환됨
+          }
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('저장할 단어가 없습니다.'),
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+          );
+          return;
+        }
 
         print('단어 편집 결과: ${editedWords.length}개 단어, DAY: $dayName');
 
@@ -488,9 +608,19 @@ class _HomePageState extends State<HomePage>
             print('새 컬렉션 생성: $dayName');
           }
 
-          // 새 단어로 기존 단어 교체
-          _dayCollections[dayName] = List.from(editedWords);
-          print('$dayName 컬렉션 업데이트: ${editedWords.length}개 단어');
+          // 새 단어 추가 또는 업데이트 (기존 단어 유지하면서)
+          List<WordEntry> updatedWords =
+              List.from(_dayCollections[dayName] ?? []);
+
+          // 기존 단어 중 편집된 단어와 중복되는 것 제거
+          updatedWords.removeWhere((existingWord) => editedWords
+              .any((editedWord) => editedWord.word == existingWord.word));
+
+          // 편집된 단어 추가
+          updatedWords.addAll(editedWords);
+
+          _dayCollections[dayName] = updatedWords;
+          print('$dayName 컬렉션 업데이트: ${updatedWords.length}개 단어');
         });
 
         // 기존 데이터 다시 로드 (확실한 동기화를 위해)
@@ -515,6 +645,15 @@ class _HomePageState extends State<HomePage>
         });
       } catch (e) {
         print('단어 저장 중 오류: $e');
+
+        // 저장 중 오류 발생 시 크레딧 복구 고려 (옵션)
+        if (creditUsed) {
+          print('단어 저장 중 오류 발생으로 크레딧 복구 (선택적)');
+          // 아래 줄의 주석을 해제하면 저장 오류 시에도 크레딧을 복구합니다
+          // await _purchaseService.addUsages(1);
+          // creditUsed = false;
+        }
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('단어 저장 중 오류가 발생했습니다: $e'),
@@ -522,7 +661,16 @@ class _HomePageState extends State<HomePage>
           ),
         );
       }
+
+      // 사용량 정보 갱신
       _loadRemainingUsages();
+    } else {
+      // 사용자가 편집 화면을 취소한 경우 (뒤로 가기 등)
+      if (creditUsed) {
+        print('사용자가 편집 화면을 취소하여 크레딧 복구');
+        await _purchaseService.addUsages(1);
+        creditUsed = false; // 크레딧 반환됨
+      }
     }
   }
 
@@ -1037,7 +1185,11 @@ class _HomePageState extends State<HomePage>
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
-                            backgroundColor: Colors.limeAccent,
+                            backgroundColor:
+                                Theme.of(context).brightness == Brightness.dark
+                                    ? Colors.green.shade700 // 다크모드
+                                    : Colors.green.shade500, // 라이트모드
+                            foregroundColor: Colors.white, // 텍스트는 항상 흰색으로
                             elevation: 0,
                           ),
                         ),
@@ -1053,7 +1205,11 @@ class _HomePageState extends State<HomePage>
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
-                            backgroundColor: Colors.amberAccent,
+                            backgroundColor:
+                                Theme.of(context).brightness == Brightness.dark
+                                    ? Colors.blue.shade700 // 다크모드
+                                    : Colors.blue.shade500, // 라이트모드
+                            foregroundColor: Colors.white, // 텍스트는 항상 흰색으로
                             elevation: 0,
                           ),
                         ),

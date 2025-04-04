@@ -21,6 +21,8 @@ dependencies:
   path: ^1.8.3     # 파일 경로 관리
   shared_preferences: ^2.5.3
   provider: ^6.1.4
+  flutter_secure_storage: ^4.2.1
+  in_app_purchase: ^3.2.1
 
 dev_dependencies:
   flutter_test:

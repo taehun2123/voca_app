@@ -1,9 +1,12 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:vocabulary_app/screens/purchase_screen.dart';
 import 'package:vocabulary_app/screens/word_edit_screen.dart';
+import 'package:vocabulary_app/services/purchase_service.dart';
 import 'package:vocabulary_app/widgets/modern_flash_card_screen.dart';
 import 'package:vocabulary_app/widgets/modern_quiz_card_screen.dart';
+import 'package:vocabulary_app/widgets/usage_indicator_widget.dart';
 import '../model/word_entry.dart';
 import '../services/openai_vision_service.dart';
 import '../services/storage_service.dart';
@@ -28,10 +31,12 @@ class _HomePageState extends State<HomePage>
   final StorageService _storageService = StorageService();
   final TtsService _ttsService = TtsService();
   final ApiKeyService _apiKeyService = ApiKeyService();
+  final PurchaseService _purchaseService = PurchaseService();
   int _processedImages = 0; // 처리된 이미지 수
   int _totalImagesToProcess = 0; // 총 처리할 이미지 수
   int _extractedWordsCount = 0; // 추출된 단어 수
   bool _showDetailedProgress = false; // 상세 진행 상태 표시 여부
+  int _remainingUsages = 0;
 
   OpenAIVisionService? _openAIService;
   bool _isUsingOpenAI = false;
@@ -53,12 +58,37 @@ class _HomePageState extends State<HomePage>
     _loadSavedWords();
     print('홈 화면 초기화 - API 초기화 시작');
     _initializeOpenAI();
+    _purchaseService.initialize();
+    _loadRemainingUsages();
+  }
+
+  // 사용량 로드 함수 추가
+  Future<void> _loadRemainingUsages() async {
+    try {
+      final usages = await _purchaseService.getRemainingUsages();
+      setState(() {
+        _remainingUsages = usages;
+      });
+    } catch (e) {
+      print('사용량 로드 오류: $e');
+    }
+  }
+
+  // 구매 화면으로 이동하는 함수
+  void _navigateToPurchaseScreen() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => PurchaseScreen()),
+    ).then((_) {
+      // 돌아왔을 때 사용량 갱신
+      _loadRemainingUsages();
+    });
   }
 
   Future<void> _initializeOpenAI() async {
     final apiKey = await _apiKeyService.getOpenAIApiKey();
     if (apiKey != null && apiKey.isNotEmpty) {
-      _openAIService = OpenAIVisionService(apiKey: apiKey);
+      _openAIService = OpenAIVisionService();
       setState(() {
         _isUsingOpenAI = true;
       });
@@ -241,27 +271,20 @@ class _HomePageState extends State<HomePage>
     );
   }
 
-// lib/screens/home_screen.dart의 _processBatchImages 함수 수정
-
   Future<void> _processBatchImages() async {
-    // API 키 확인
-    if (_isUsingOpenAI && _openAIService == null) {
+    // 사용량 체크
+    if (_remainingUsages <= 0) {
+      // 사용량 부족 시 구매 화면으로 안내
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content:
-              const Text('OpenAI API 키가 설정되지 않았습니다. 설정 화면에서 API 키를 입력해주세요.'),
+          content: Text('단어장 생성 횟수가 부족합니다.'),
+          action: SnackBarAction(
+            label: '충전하기',
+            onPressed: _navigateToPurchaseScreen,
+          ),
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(10),
-          ),
-          action: SnackBarAction(
-            label: '설정',
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => SettingsScreen()),
-              ).then((_) => _initializeOpenAI());
-            },
           ),
         ),
       );
@@ -295,21 +318,19 @@ class _HomePageState extends State<HomePage>
           _processedImages = i + 1;
         });
 
-        if (_isUsingOpenAI && _openAIService != null) {
-          List<WordEntry> words =
-              await _openAIService!.extractWordsFromImage(_batchImages[i]);
+        List<WordEntry> words =
+            await _openAIService!.extractWordsFromImage(_batchImages[i]);
 
-          // 여기서 추출된 단어들에 현재 선택된 DAY 값을 설정
-          for (var j = 0; j < words.length; j++) {
-            words[j] = words[j].copyWith(day: _currentDay);
-          }
-
-          allWords.addAll(words);
-
-          setState(() {
-            _extractedWordsCount += words.length;
-          });
+        // 여기서 추출된 단어들에 현재 선택된 DAY 값을 설정
+        for (var j = 0; j < words.length; j++) {
+          words[j] = words[j].copyWith(day: _currentDay);
         }
+
+        allWords.addAll(words);
+
+        setState(() {
+          _extractedWordsCount += words.length;
+        });
       } catch (e) {
         print('이미지 처리 중 오류: $e');
         ScaffoldMessenger.of(context).showSnackBar(
@@ -321,6 +342,7 @@ class _HomePageState extends State<HomePage>
             ),
           ),
         );
+        break;
       }
     }
 
@@ -426,6 +448,7 @@ class _HomePageState extends State<HomePage>
           ),
         );
       }
+      _loadRemainingUsages();
     }
   }
 
@@ -578,7 +601,7 @@ class _HomePageState extends State<HomePage>
         elevation: 0,
         backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
         title: Text(
-          '캡쳐해보카',
+          '찍어보카',
           style: TextStyle(
             color: Theme.of(context).brightness == Brightness.dark
                 ? Colors.white
@@ -603,21 +626,6 @@ class _HomePageState extends State<HomePage>
               Provider.of<ThemeProvider>(context, listen: false).toggleTheme();
             },
             tooltip: '테마 변경',
-          ),
-          IconButton(
-            icon: Icon(
-              Icons.settings,
-              color: Theme.of(context).brightness == Brightness.dark
-                  ? Colors.white70
-                  : Colors.black54,
-            ),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => SettingsScreen()),
-              ).then((_) => _initializeOpenAI());
-            },
-            tooltip: '설정',
           ),
         ],
         bottom: TabBar(
@@ -663,6 +671,11 @@ class _HomePageState extends State<HomePage>
         mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
+          // 사용량 표시 위젯 추가 (최상단)
+          UsageIndicatorWidget(
+            remainingUsages: _remainingUsages,
+            onBuyPressed: _navigateToPurchaseScreen,
+          ),
           if (_batchImages.isNotEmpty)
             Expanded(
               flex: 2,
@@ -766,108 +779,55 @@ class _HomePageState extends State<HomePage>
                       style: TextStyle(fontSize: 14, color: Colors.grey),
                     ),
                     const SizedBox(height: 22),
-                    if (_isUsingOpenAI)
-                      Container(
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).brightness == Brightness.dark 
-                            ? Colors.green.shade900 
+// API 키 관련 UI는 제거하고 대신 간단한 정보 표시
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? Colors.green.shade900.withOpacity(0.3)
                             : Colors.green.shade50,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                            color:
-                                Theme.of(context).brightness == Brightness.dark
-                                    ? Colors.green.shade900.withOpacity(0.3)
-                                    : Colors.green.shade50,
-                            width: 1,
-                          ),
-                        ),
-                        padding: const EdgeInsets.all(16),
-                        child: Column(
-                          children: [
-                            Container(
-                              padding: EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: Theme.of(context).brightness ==
-                                        Brightness.dark
-                                    ? Colors.green.shade700
-                                    : Colors.green.shade300,
-                                shape: BoxShape.circle,
-                              ),
-                              child: Icon(
-                                Icons.check_circle,
-                                color: Theme.of(context).brightness ==
-                                        Brightness.dark
-                                    ? Colors.green.shade300
-                                    : Colors.green,
-                                size: 20,
-                              ),
-                            ),
-                            const SizedBox(height: 10),
-                            Text(
-                              'OpenAI 사용 중',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: Theme.of(context).brightness == Brightness.dark 
-                            ? Colors.green.shade50 
-                            : Colors.green.shade900,
-                              ),
-                            ),
-                          ],
-                        ),
-                      )
-                    else
-                      Container(
-                        decoration: BoxDecoration(
-                          color: Colors.orange.shade50,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                            color: Colors.orange.shade100,
-                            width: 1,
-                          ),
-                        ),
-                        padding: const EdgeInsets.all(12),
-                        child: Column(
-                          children: [
-                            Container(
-                              padding: EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: Colors.orange.shade100,
-                                shape: BoxShape.circle,
-                              ),
-                              child: Icon(
-                                Icons.info_outline,
-                                color: Colors.orange,
-                                size: 20,
-                              ),
-                            ),
-                            const SizedBox(height: 10),
-                            Text(
-                              'API 키가 필요합니다',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: Colors.orange[800],
-                              ),
-                            ),
-                            const SizedBox(height: 10),
-                            OutlinedButton(
-                              onPressed: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                      builder: (context) => SettingsScreen()),
-                                ).then((_) => _initializeOpenAI());
-                              },
-                              child: Text('API 키 설정하기'),
-                              style: OutlinedButton.styleFrom(
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                side: BorderSide(color: Colors.orange.shade300),
-                              ),
-                            ),
-                          ],
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? Colors.green.shade900.withOpacity(0.3)
+                              : Colors.green.shade50,
+                          width: 1,
                         ),
                       ),
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        children: [
+                          Container(
+                            padding: EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).brightness ==
+                                      Brightness.dark
+                                  ? Colors.green.shade700
+                                  : Colors.green.shade300,
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              Icons.check_circle,
+                              color: Theme.of(context).brightness ==
+                                      Brightness.dark
+                                  ? Colors.green.shade300
+                                  : Colors.green,
+                              size: 20,
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          Text(
+                            _remainingUsages > 0 ? "사용 가능" : "충전 필요",
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Theme.of(context).brightness ==
+                                      Brightness.dark
+                                  ? Colors.green.shade50
+                                  : Colors.green.shade900,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                     const SizedBox(height: 24),
                     // 단어장 테스트 버튼 추가
                     OutlinedButton.icon(

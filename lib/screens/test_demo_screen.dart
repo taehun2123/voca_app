@@ -1,8 +1,12 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:vocabulary_app/screens/home_screen.dart';
+import 'package:vocabulary_app/utils/api_key_utils.dart';
 import '../model/word_entry.dart';
 import '../services/openai_vision_service.dart';
 import '../services/api_key_service.dart';
+import 'package:vocabulary_app/services/purchase_service.dart';
+
 
 class TestDemoScreen extends StatefulWidget {
   final File imageFile;
@@ -15,10 +19,11 @@ class TestDemoScreen extends StatefulWidget {
 
 class _TestDemoScreenState extends State<TestDemoScreen> {
   final ApiKeyService _apiKeyService = ApiKeyService();
+  final PurchaseService _purchaseService = PurchaseService(); // 추가
   OpenAIVisionService? _visionService;
   List<WordEntry>? _extractedWords;
   bool _isLoading = true;
-  bool _hasApiKey = false;
+  bool _hasUsage = true; // 사용량 체크 변수 추가
   String _errorMessage = '';
   
   @override
@@ -35,23 +40,32 @@ class _TestDemoScreenState extends State<TestDemoScreen> {
         _errorMessage = '';
       });
       
-      final apiKey = await _apiKeyService.getOpenAIApiKey();
-      
-      if (apiKey == null || apiKey.isEmpty) {
+      final usages = await _purchaseService.getRemainingUsages();
+        setState(() {
+          _hasUsage = usages > 0;
+        });
+            
+      // 테스트 기능은 자체 API 키 사용
+      final apiKey = ApiKeyUtils.getApiKey();
+      if (apiKey.isEmpty) {
         setState(() {
           _isLoading = false;
-          _hasApiKey = false;
-          _errorMessage = 'OpenAI API 키가 설정되지 않았습니다.';
+          _errorMessage = '오류: API 키를 사용할 수 없습니다.';
         });
         return;
       }
       
       // Vision 서비스 초기화
-      _visionService = OpenAIVisionService(apiKey: apiKey);
-      setState(() {
-        _hasApiKey = true;
-      });
-      
+      _visionService = OpenAIVisionService();
+
+      // 사용량 부족 시에는 메시지 표시만 하고 처리는 하지 않음
+      if (!_hasUsage) {
+        setState(() {
+          _isLoading = false;
+        });
+        return;
+      }
+
       // 이미지 처리
       await _processImage();
     } catch (e) {
@@ -93,7 +107,7 @@ class _TestDemoScreenState extends State<TestDemoScreen> {
       appBar: AppBar(
         title: Text('단어 인식 테스트'),
         actions: [
-          if (_visionService != null)
+          if (_visionService != null && _hasUsage)
             IconButton(
               icon: Icon(Icons.refresh),
               onPressed: _processImage,
@@ -114,7 +128,50 @@ class _TestDemoScreenState extends State<TestDemoScreen> {
           ),
           
           Divider(),
-          
+          // 사용량 부족 시 안내
+          if (!_hasUsage)
+            Expanded(
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.credit_card_off,
+                      color: Colors.orange,
+                      size: 48,
+                    ),
+                    SizedBox(height: 16),
+                    Text(
+                      '사용 가능한 횟수가 부족합니다',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    SizedBox(height: 8),
+                    Text(
+                      '단어 인식 테스트를 사용하려면 사용권을 구매해주세요.',
+                      textAlign: TextAlign.center,
+                    ),
+                    SizedBox(height: 24),
+                    ElevatedButton(
+                      onPressed: () {
+                        Navigator.pop(context);
+                        // 구매 화면으로 이동하는 코드 추가 (홈 화면을 통해)
+                      },
+                      child: Text('사용권 구매하기'),
+                      style: ElevatedButton.styleFrom(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          else if (_isLoading)
           // 추출 결과
           Expanded(
             child: _isLoading
@@ -128,7 +185,7 @@ class _TestDemoScreenState extends State<TestDemoScreen> {
                       ],
                     ),
                   )
-                : !_hasApiKey
+                : !_hasUsage
                     ? Center(
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
@@ -302,13 +359,12 @@ class _TestDemoScreenState extends State<TestDemoScreen> {
           ),
         ],
       ),
-      floatingActionButton: _hasApiKey && !_isLoading && (_extractedWords != null && _extractedWords!.isNotEmpty)
+      floatingActionButton:  _hasUsage && !_isLoading && (_extractedWords != null && _extractedWords!.isNotEmpty)
           ? FloatingActionButton.extended(
               onPressed: () {
-                // 단어장에 저장하는 기능
-                Navigator.pop(context, _extractedWords);
+                Navigator.pop(context, const HomePage());
               },
-              icon: Icon(Icons.save),
+              icon: Icon(Icons.home),
               label: Text('홈으로 가기'),
             )
           : null,

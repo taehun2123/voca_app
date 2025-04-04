@@ -3,8 +3,10 @@ import 'package:flutter/services.dart'; // SystemChrome 사용을 위한 import 
 import 'package:provider/provider.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:vocabulary_app/services/db_service.dart';
+import 'package:vocabulary_app/services/purchase_service.dart';
 import 'package:vocabulary_app/theme/app_themes.dart';
 import 'package:vocabulary_app/theme/theme_provider.dart';
+import 'package:vocabulary_app/utils/api_key_utils.dart';
 import 'screens/home_screen.dart';
 import 'services/api_key_service.dart';
 
@@ -19,6 +21,9 @@ void main() async {
 
   // 데이터베이스 서비스 초기화
   final dbService = DBService();
+  // 구매 서비스 초기화
+  final purchaseService = PurchaseService();
+  
   try {
     print('앱 시작: 데이터베이스 초기화 중...');
 
@@ -52,9 +57,14 @@ void main() async {
     final apiKeyService = ApiKeyService();
     await apiKeyService.init();
 
+    // 구매 서비스 초기화
+    await purchaseService.initialize();
+
     runApp(
-      ChangeNotifierProvider(
-        create: (_) => ThemeProvider(),
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider(create: (_) => ThemeProvider()),
+        ],
         child: const MyApp(),
       ),
     );
@@ -78,7 +88,8 @@ class MyApp extends StatelessWidget {
     return Consumer<ThemeProvider>(
       builder: (context, themeProvider, child) {
         return MaterialApp(
-          title: '캡쳐해보카',
+          debugShowCheckedModeBanner: false,
+          title: '찍어보카',
           theme: AppThemes.lightTheme,
           darkTheme: AppThemes.darkTheme,
           themeMode:

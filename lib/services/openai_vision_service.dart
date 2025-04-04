@@ -1,24 +1,39 @@
+// lib/services/openai_vision_service.dart (수정)
+
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
 import '../model/word_entry.dart';
+import '../utils/api_key_utils.dart';
+import '../utils/constants.dart';
+import '../services/purchase_service.dart';
 
 class OpenAIVisionService {
-  final String _apiKey;
   final String _apiUrl = 'https://api.openai.com/v1/chat/completions';
+  final PurchaseService _purchaseService = PurchaseService();
 
-  OpenAIVisionService({required String apiKey}) : _apiKey = apiKey;
-
-  // 이미지 파일에서 단어 추출
+  // 이미지 파일에서 단어 추출 (사용량 체크 추가)
   Future<List<WordEntry>> extractWordsFromImage(File imageFile) async {
+    // 먼저 사용량 체크
+    final hasEnoughCredits = await _purchaseService.useOneCredit();
+    if (!hasEnoughCredits) {
+      throw Exception('사용 가능한 횟수가 부족합니다. 구매 페이지에서 사용권을 구매하세요.');
+    }
+    
     try {
+      // API 키 가져오기 (보호된 방식)
+      final apiKey = ApiKeyUtils.getApiKey();
+      if (apiKey.isEmpty) {
+        throw Exception('API 키를 사용할 수 없습니다.');
+      }
+      
       // 이미지를 base64로 인코딩
       final bytes = await imageFile.readAsBytes();
       final base64Image = base64Encode(bytes);
       
       // OpenAI API 요청 본문 준비 - 프롬프트 개선
       final payload = jsonEncode({
-        "model": "gpt-4o-mini",  // 최신 모델 사용
+        "model": AppConstants.openAiModel,  // 환경설정에서 정의된 모델
         "messages": [
           {
             "role": "user",
@@ -70,7 +85,7 @@ class OpenAIVisionService {
             ]
           }
         ],
-        "max_tokens": 4000
+        "max_tokens": AppConstants.maxTokens
       });
 
       // API 요청 보내기
@@ -78,7 +93,7 @@ class OpenAIVisionService {
         Uri.parse(_apiUrl),
         headers: {
           'Content-Type': 'application/json; charset=utf-8',
-          'Authorization': 'Bearer $_apiKey',
+          'Authorization': 'Bearer $apiKey',
         },
         body: payload,
       );
@@ -90,7 +105,7 @@ class OpenAIVisionService {
         final responseData = jsonDecode(decodedResponse);
         final content = responseData['choices'][0]['message']['content'];
         
-        // JSON 부분 추출 (경우에 따라 전체 텍스트 중 JSON만 파싱해야 할 수 있음)
+        // JSON 부분 추출
         final jsonStr = _extractJsonFromString(content);
         
         try {
@@ -103,21 +118,35 @@ class OpenAIVisionService {
         } catch (parseError) {
           print('JSON 파싱 오류: $parseError');
           print('원본 응답: $content');
-          return [];
+          
+          // 사용량 복구 (에러 발생 시)
+          await _purchaseService.addUsages(1);
+          
+          throw Exception('응답 데이터를 처리할 수 없습니다. 다시 시도해주세요.');
         }
       } else {
         // 오류 응답도 UTF-8로 디코딩
         final String errorResponse = utf8.decode(response.bodyBytes);
         print('OpenAI API 오류: ${response.statusCode} - $errorResponse');
-        return [];
+        
+        // 사용량 복구 (API 오류 시)
+        await _purchaseService.addUsages(1);
+        
+        throw Exception('API 오류: ${response.statusCode}');
       }
     } catch (e) {
       print('단어 추출 중 오류 발생: $e');
-      return [];
+      
+      // 네트워크 오류 등 예외 상황에서도 사용량 복구
+      if (e is! Exception || e.toString() != '사용 가능한 횟수가 부족합니다. 구매 페이지에서 사용권을 구매하세요.') {
+        await _purchaseService.addUsages(1);
+      }
+      
+      rethrow; // 원래 오류 다시 던지기
     }
   }
   
-  // 문자열에서 JSON 부분만 추출 (개선된 버전)
+  // 문자열에서 JSON 부분만 추출 (기존 메서드)
   String _extractJsonFromString(String text) {
     // JSON 배열 시작과 끝 찾기 (더 견고한 방식)
     final startIndex = text.indexOf('[');
@@ -167,7 +196,7 @@ class OpenAIVisionService {
     }
   }
   
-  // JSON을 WordEntry 객체로 변환 (개선된 버전)
+  // JSON을 WordEntry 객체로 변환 (기존 메서드)
   WordEntry _parseWordJson(Map<String, dynamic> json) {
     // 필드가 없을 경우 기본값 제공
     final word = json['word'] ?? '';

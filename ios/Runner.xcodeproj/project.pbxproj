@@ -11,6 +11,7 @@
 		045BF27A2D9FA64A0009081D /* ci_post_clone.sh in Resources */ = {isa = PBXBuildFile; fileRef = 045BF2782D9FA64A0009081D /* ci_post_clone.sh */; };
 		04DFB45A2D9E9B6A00221E7A /* Pods_Runner.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 30B4699CDA03ECCEFE0F27CE /* Pods_Runner.framework */; };
 		04DFB45B2D9E9B6A00221E7A /* Pods_Runner.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 30B4699CDA03ECCEFE0F27CE /* Pods_Runner.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		04FF7ABF2D9FC5500026FA5F /* StoreKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 04FF7ABE2D9FC5500026FA5F /* StoreKit.framework */; };
 		1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */ = {isa = PBXBuildFile; fileRef = 1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */; };
 		331C808B294A63AB00263BE5 /* RunnerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 331C807B294A618700263BE5 /* RunnerTests.swift */; };
 		3B3967161E833CAA004F5970 /* AppFrameworkInfo.plist in Resources */ = {isa = PBXBuildFile; fileRef = 3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */; };
@@ -47,6 +48,7 @@
 
 /* Begin PBXFileReference section */
 		045BF2782D9FA64A0009081D /* ci_post_clone.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = ci_post_clone.sh; sourceTree = "<group>"; };
+		04FF7ABE2D9FC5500026FA5F /* StoreKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = StoreKit.framework; path = System/Library/Frameworks/StoreKit.framework; sourceTree = SDKROOT; };
 		1498D2321E8E86230040F4C2 /* GeneratedPluginRegistrant.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = GeneratedPluginRegistrant.h; sourceTree = "<group>"; };
 		1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = GeneratedPluginRegistrant.m; sourceTree = "<group>"; };
 		30B4699CDA03ECCEFE0F27CE /* Pods_Runner.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Runner.framework; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -86,6 +88,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				04DFB45A2D9E9B6A00221E7A /* Pods_Runner.framework in Frameworks */,
+				04FF7ABF2D9FC5500026FA5F /* StoreKit.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -172,6 +175,7 @@
 		FB23D185A831CFA2C39960F7 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				04FF7ABE2D9FC5500026FA5F /* StoreKit.framework */,
 				30B4699CDA03ECCEFE0F27CE /* Pods_Runner.framework */,
 				3ECC0E9F68F6DEC37EF5BEBA /* Pods_RunnerTests.framework */,
 			);
@@ -331,13 +335,9 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-Runner/Pods-Runner-frameworks-${CONFIGURATION}-input-files.xcfilelist",
 			);
-			inputPaths = (
-			);
 			name = "[CP] Embed Pods Frameworks";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-Runner/Pods-Runner-frameworks-${CONFIGURATION}-output-files.xcfilelist",
-			);
-			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -493,7 +493,7 @@
 				DEVELOPMENT_TEAM = S9TV7WFQ36;
 				ENABLE_BITCODE = NO;
 				INFOPLIST_FILE = Runner/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "캡쳐해보카";
+				INFOPLIST_KEY_CFBundleDisplayName = "찍어보카";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.education";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -679,7 +679,7 @@
 				DEVELOPMENT_TEAM = S9TV7WFQ36;
 				ENABLE_BITCODE = NO;
 				INFOPLIST_FILE = Runner/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "캡쳐해보카";
+				INFOPLIST_KEY_CFBundleDisplayName = "찍어보카";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.education";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -705,7 +705,7 @@
 				DEVELOPMENT_TEAM = S9TV7WFQ36;
 				ENABLE_BITCODE = NO;
 				INFOPLIST_FILE = Runner/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "캡쳐해보카";
+				INFOPLIST_KEY_CFBundleDisplayName = "찍어보카";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.education";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",

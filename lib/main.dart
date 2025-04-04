@@ -1,5 +1,3 @@
-// lib/main.dart 파일 수정
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'; // SystemChrome 사용을 위한 import 추가
 import 'package:provider/provider.dart';

@@ -12,10 +12,7 @@ import '../model/word_entry.dart';
 import '../services/openai_vision_service.dart';
 import '../services/storage_service.dart';
 import '../services/tts_service.dart';
-import '../services/api_key_service.dart';
 import '../widgets/word_card_widget.dart';
-import 'settings_screen.dart';
-import 'test_demo_screen.dart';
 import 'package:provider/provider.dart';
 import '../theme/theme_provider.dart';
 import 'package:vocabulary_app/screens/admin_screen.dart'; // 관리자 화면
@@ -32,7 +29,6 @@ class _HomePageState extends State<HomePage>
   final ImagePicker _picker = ImagePicker();
   final StorageService _storageService = StorageService();
   final TtsService _ttsService = TtsService();
-  final ApiKeyService _apiKeyService = ApiKeyService();
   final PurchaseService _purchaseService = PurchaseService();
   int _processedImages = 0; // 처리된 이미지 수
   int _totalImagesToProcess = 0; // 총 처리할 이미지 수
@@ -91,11 +87,37 @@ class _HomePageState extends State<HomePage>
   }
 
   Future<void> _initializeOpenAI() async {
-    final apiKey = await _apiKeyService.getOpenAIApiKey();
-    if (apiKey != null && apiKey.isNotEmpty) {
-      _openAIService = OpenAIVisionService();
+    try {
+      print('OpenAI 서비스 초기화 시작');
+
+      // Remote Config 서비스에서 API 키 직접 가져오기
+      final remoteConfigService = RemoteConfigService();
+      final apiKey = remoteConfigService.getApiKey();
+
+      // apiKey 값 로깅 (개발 중에만 사용, 실제 배포 시 제거 필요)
+      print(
+          'Remote Config에서 가져온 API 키 상태: ${apiKey.isEmpty ? "비어 있음" : "설정됨"}');
+
+      if (apiKey.isNotEmpty) {
+        // API 키가 있으면 서비스 초기화
+        _openAIService = OpenAIVisionService();
+        setState(() {
+          _isUsingOpenAI = true;
+        });
+        print('OpenAI 서비스 초기화 완료');
+      } else {
+        // API 키가 없으면 서비스 초기화 실패
+        setState(() {
+          _isUsingOpenAI = false;
+          _openAIService = null;
+        });
+        print('API 키가 비어 있어 OpenAI 서비스를 초기화할 수 없습니다');
+      }
+    } catch (e) {
+      print('OpenAI 서비스 초기화 중 오류: $e');
       setState(() {
-        _isUsingOpenAI = true;
+        _isUsingOpenAI = false;
+        _openAIService = null;
       });
     }
   }
@@ -190,23 +212,6 @@ class _HomePageState extends State<HomePage>
     }
   }
 
-  // 단어장 이미지 테스트 실행
-  Future<void> _runWordImageTest() async {
-    final XFile? image = await _picker.pickImage(
-      source: ImageSource.gallery,
-      imageQuality: 100, // 최고 품질로 이미지 선택
-    );
-
-    if (image != null) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => TestDemoScreen(imageFile: File(image.path)),
-        ),
-      );
-    }
-  }
-
   Future<void> _takePhoto() async {
     final XFile? photo = await _picker.pickImage(source: ImageSource.camera);
     if (photo != null) {
@@ -277,6 +282,26 @@ class _HomePageState extends State<HomePage>
   }
 
   Future<void> _processBatchImages() async {
+    // OpenAI 서비스 확인
+    if (_openAIService == null) {
+      print('OpenAI 서비스가 null입니다. 재초기화 시도...');
+      await _initializeOpenAI();
+
+      // 재초기화 후에도 null이면 오류 메시지 표시
+      if (_openAIService == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('단어 인식 서비스를 사용할 수 없습니다. 관리자에게 문의하세요.'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        setState(() {
+          _isProcessing = false;
+          _batchImages = []; // 배치 이미지 초기화
+        });
+        return;
+      }
+    }
     // 사용량 체크
     if (_remainingUsages <= 0) {
       // 사용량 부족 시 구매 화면으로 안내
@@ -343,6 +368,23 @@ class _HomePageState extends State<HomePage>
         setState(() {
           _processedImages = i + 1;
         });
+
+        if (_openAIService == null) {
+          print('OpenAI 서비스가 초기화되지 않았습니다');
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('단어 인식 서비스를 사용할 수 없습니다'),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+
+          setState(() {
+            _isProcessing = false;
+            _batchImages = [];
+          });
+
+          return;
+        }
 
         List<WordEntry> words =
             await _openAIService!.extractWordsFromImage(_batchImages[i]);
@@ -948,20 +990,6 @@ class _HomePageState extends State<HomePage>
                             ),
                           ),
                         ],
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    // 단어장 테스트 버튼 추가
-                    OutlinedButton.icon(
-                      onPressed: _runWordImageTest,
-                      icon: Icon(Icons.science),
-                      label: Text('단어장 인식 테스트'),
-                      style: OutlinedButton.styleFrom(
-                        padding:
-                            EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
                       ),
                     ),
                   ],

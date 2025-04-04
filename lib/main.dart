@@ -9,7 +9,6 @@ import 'package:vocabulary_app/services/remote_config_service.dart';
 import 'package:vocabulary_app/theme/app_themes.dart';
 import 'package:vocabulary_app/theme/theme_provider.dart';
 import 'screens/home_screen.dart';
-import 'services/api_key_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -24,7 +23,6 @@ void main() async {
   final dbService = DBService();
   // 구매 서비스 초기화
   final purchaseService = PurchaseService();
-  final apiKeyService = ApiKeyService();
 
   try {
     print('앱 시작: 데이터베이스 초기화 중...');
@@ -54,9 +52,6 @@ void main() async {
       final count = row['count'];
       print('- $day: $count개');
     }
-
-    // API 키 서비스 초기화
-    await apiKeyService.init();
 
     // 구매 서비스 초기화
     await purchaseService.initialize();

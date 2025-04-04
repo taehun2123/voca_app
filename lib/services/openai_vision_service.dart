@@ -18,17 +18,19 @@ class OpenAIVisionService {
     try {
       // API 키 가져오기 (보호된 방식)
       final apiKey = ApiKeyUtils.getApiKey();
+      print(
+          'OpenAIVisionService: API 키 상태: ${apiKey.isEmpty ? "비어 있음" : "설정됨"}');
       if (apiKey.isEmpty) {
         throw Exception('API 키를 사용할 수 없습니다.');
       }
-      
+
       // 이미지를 base64로 인코딩
       final bytes = await imageFile.readAsBytes();
       final base64Image = base64Encode(bytes);
-      
+
       // OpenAI API 요청 본문 준비 - 프롬프트 개선
       final payload = jsonEncode({
-        "model": AppConstants.openAiModel,  // 환경설정에서 정의된 모델
+        "model": AppConstants.openAiModel, // 환경설정에서 정의된 모델
         "messages": [
           {
             "role": "user",
@@ -73,9 +75,7 @@ class OpenAIVisionService {
               },
               {
                 "type": "image_url",
-                "image_url": {
-                  "url": "data:image/jpeg;base64,$base64Image"
-                }
+                "image_url": {"url": "data:image/jpeg;base64,$base64Image"}
               }
             ]
           }
@@ -99,15 +99,16 @@ class OpenAIVisionService {
         final String decodedResponse = utf8.decode(response.bodyBytes);
         final responseData = jsonDecode(decodedResponse);
         final content = responseData['choices'][0]['message']['content'];
-        
+
         // JSON 부분 추출
         final jsonStr = _extractJsonFromString(content);
-        
+
         try {
           // JSON 파싱하여 WordEntry 객체 리스트로 변환
           final List<dynamic> wordsJson = jsonDecode(jsonStr);
-          final List<WordEntry> words = wordsJson.map((json) => _parseWordJson(json)).toList();
-          
+          final List<WordEntry> words =
+              wordsJson.map((json) => _parseWordJson(json)).toList();
+
           print('추출된 단어 수: ${words.length}');
           return words;
         } catch (parseError) {
@@ -126,17 +127,17 @@ class OpenAIVisionService {
       rethrow; // 원래 오류 다시 던지기
     }
   }
-  
+
   // 문자열에서 JSON 부분만 추출 (기존 메서드)
   String _extractJsonFromString(String text) {
     // JSON 배열 시작과 끝 찾기 (더 견고한 방식)
     final startIndex = text.indexOf('[');
     if (startIndex == -1) return '[]'; // JSON 배열 시작을 찾지 못한 경우
-    
+
     // 중괄호 계수를 사용하여 JSON 텍스트 경계 찾기
     int bracketCount = 0;
     int endIndex = text.length - 1;
-    
+
     for (int i = startIndex; i < text.length; i++) {
       final char = text[i];
       if (char == '[') bracketCount++;
@@ -148,7 +149,7 @@ class OpenAIVisionService {
         }
       }
     }
-    
+
     // JSON 부분만 추출
     try {
       final jsonPart = text.substring(startIndex, endIndex);
@@ -157,7 +158,7 @@ class OpenAIVisionService {
       return jsonPart;
     } catch (e) {
       print('JSON 추출 오류: $e');
-      
+
       // JSON 형식 복구 시도
       try {
         // 괄호 균형이 맞지 않는 경우 처리
@@ -165,7 +166,7 @@ class OpenAIVisionService {
         if (!attemptFix.endsWith(']')) {
           attemptFix += ']';
         }
-        
+
         // 테스트
         jsonDecode(attemptFix);
         return attemptFix;
@@ -176,14 +177,14 @@ class OpenAIVisionService {
       }
     }
   }
-  
+
   // JSON을 WordEntry 객체로 변환 (기존 메서드)
   WordEntry _parseWordJson(Map<String, dynamic> json) {
     // 필드가 없을 경우 기본값 제공
     final word = json['word'] ?? '';
     final pronunciation = json['pronunciation'] ?? '';
     final meaning = json['meaning'] ?? '';
-    
+
     // 예문과 관용구는 배열로 처리
     List<String> examples = [];
     if (json['examples'] != null) {
@@ -194,7 +195,7 @@ class OpenAIVisionService {
         examples = [json['examples'] as String];
       }
     }
-    
+
     List<String> commonPhrases = [];
     if (json['commonPhrases'] != null) {
       if (json['commonPhrases'] is List) {
@@ -203,7 +204,7 @@ class OpenAIVisionService {
         commonPhrases = [json['commonPhrases'] as String];
       }
     }
-    
+
     return WordEntry(
       word: word,
       pronunciation: pronunciation,

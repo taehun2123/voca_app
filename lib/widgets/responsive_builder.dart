@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 /// 반응형 화면 빌더 위젯
-/// 화면 크기에 따라 다른 레이아웃을 구현할 수 있도록 도와주는 위젯
 class ResponsiveBuilder extends StatelessWidget {
   final Widget Function(BuildContext context, BoxConstraints constraints) builder;
   

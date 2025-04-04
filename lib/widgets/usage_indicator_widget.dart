@@ -1,7 +1,6 @@
 // lib/widgets/usage_indicator_widget.dart
 
 import 'package:flutter/material.dart';
-import 'package:vocabulary_app/services/purchase_service.dart';
 
 class UsageIndicatorWidget extends StatelessWidget {
   final int remainingUsages;

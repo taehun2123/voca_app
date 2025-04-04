@@ -28,7 +28,7 @@ class PurchaseService {
   final List<String> _productIds = [
     AppConstants.credits10ProductId,
     AppConstants.credits30ProductId,
-    AppConstants.credits100ProductId,
+    AppConstants.credits60ProductId,
   ];
   
   // 구매 상태 스트림 컨트롤러
@@ -130,8 +130,8 @@ class PurchaseService {
         creditsToAdd = 10;
       } else if (purchaseDetails.productID == AppConstants.credits30ProductId) {
         creditsToAdd = 30;
-      } else if (purchaseDetails.productID == AppConstants.credits100ProductId) {
-        creditsToAdd = 100;
+      } else if (purchaseDetails.productID == AppConstants.credits60ProductId) {
+        creditsToAdd = 60;
       }
       
       if (creditsToAdd > 0) {

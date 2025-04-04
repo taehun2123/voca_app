@@ -6,7 +6,7 @@ class AppConstants {
   // 인앱 결제 상품 ID
   static const String credits10ProductId = 'com.taehun2123.capturevoca.credits.10';
   static const String credits30ProductId = 'com.taehun2123.capturevoca.credits.30';
-  static const String credits100ProductId = 'com.taehun2123.capturevoca.credits.100';
+  static const String credits60ProductId = 'com.taehun2123.capturevoca.credits.60';
 
   // 초기 무료 사용량xz
   static const int initialFreeCredits = 7;

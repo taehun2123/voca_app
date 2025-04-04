@@ -76,7 +76,7 @@ class _TestDemoScreenState extends State<TestDemoScreen> {
     }
   }
   
-  Future<void> _processImage() async {
+Future<void> _processImage() async {
     if (_visionService == null) {
       return;
     }
@@ -87,6 +87,18 @@ class _TestDemoScreenState extends State<TestDemoScreen> {
         _errorMessage = '';
       });
       
+      // 테스트 기능에 대해 먼저 사용량 확인 및 차감
+      final hasEnoughCredits = await _purchaseService.useOneCredit();
+      if (!hasEnoughCredits) {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = '사용 가능한 횟수가 부족합니다. 구매 페이지에서 사용권을 구매하세요.';
+          _hasUsage = false;  // 사용량 부족 상태로 UI 업데이트
+        });
+        return;
+      }
+      
+      // 이미지 처리 진행
       final words = await _visionService!.extractWordsFromImage(widget.imageFile);
       
       setState(() {
@@ -94,6 +106,13 @@ class _TestDemoScreenState extends State<TestDemoScreen> {
         _isLoading = false;
       });
     } catch (e) {
+      // 에러 발생 시 사용량 복구 (단어장이 생성되지 않으므로)
+      try {
+        await _purchaseService.addUsages(1);
+      } catch (restoreError) {
+        print('사용량 복구 중 오류: $restoreError');
+      }
+      
       setState(() {
         _isLoading = false;
         _errorMessage = '이미지 처리 중 오류: $e';

@@ -14,12 +14,7 @@ class OpenAIVisionService {
 
   // 이미지 파일에서 단어 추출 (사용량 체크 추가)
   Future<List<WordEntry>> extractWordsFromImage(File imageFile) async {
-    // 먼저 사용량 체크
-    final hasEnoughCredits = await _purchaseService.useOneCredit();
-    if (!hasEnoughCredits) {
-      throw Exception('사용 가능한 횟수가 부족합니다. 구매 페이지에서 사용권을 구매하세요.');
-    }
-    
+    // 이 함수는 이제 사용량 체크를 하지 않음 - 상위 프로세스에서 처리
     try {
       // API 키 가져오기 (보호된 방식)
       final apiKey = ApiKeyUtils.getApiKey();
@@ -118,30 +113,16 @@ class OpenAIVisionService {
         } catch (parseError) {
           print('JSON 파싱 오류: $parseError');
           print('원본 응답: $content');
-          
-          // 사용량 복구 (에러 발생 시)
-          await _purchaseService.addUsages(1);
-          
           throw Exception('응답 데이터를 처리할 수 없습니다. 다시 시도해주세요.');
         }
       } else {
         // 오류 응답도 UTF-8로 디코딩
         final String errorResponse = utf8.decode(response.bodyBytes);
         print('OpenAI API 오류: ${response.statusCode} - $errorResponse');
-        
-        // 사용량 복구 (API 오류 시)
-        await _purchaseService.addUsages(1);
-        
         throw Exception('API 오류: ${response.statusCode}');
       }
     } catch (e) {
       print('단어 추출 중 오류 발생: $e');
-      
-      // 네트워크 오류 등 예외 상황에서도 사용량 복구
-      if (e is! Exception || e.toString() != '사용 가능한 횟수가 부족합니다. 구매 페이지에서 사용권을 구매하세요.') {
-        await _purchaseService.addUsages(1);
-      }
-      
       rethrow; // 원래 오류 다시 던지기
     }
   }

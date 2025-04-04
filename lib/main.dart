@@ -1,12 +1,13 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'; // SystemChrome 사용을 위한 import 추가
 import 'package:provider/provider.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:vocabulary_app/services/db_service.dart';
 import 'package:vocabulary_app/services/purchase_service.dart';
+import 'package:vocabulary_app/services/remote_config_service.dart';
 import 'package:vocabulary_app/theme/app_themes.dart';
 import 'package:vocabulary_app/theme/theme_provider.dart';
-import 'package:vocabulary_app/utils/api_key_utils.dart';
 import 'screens/home_screen.dart';
 import 'services/api_key_service.dart';
 
@@ -23,7 +24,8 @@ void main() async {
   final dbService = DBService();
   // 구매 서비스 초기화
   final purchaseService = PurchaseService();
-  
+  final apiKeyService = ApiKeyService();
+
   try {
     print('앱 시작: 데이터베이스 초기화 중...');
 
@@ -54,11 +56,15 @@ void main() async {
     }
 
     // API 키 서비스 초기화
-    final apiKeyService = ApiKeyService();
     await apiKeyService.init();
 
     // 구매 서비스 초기화
     await purchaseService.initialize();
+
+    // Firebase 초기화
+    await Firebase.initializeApp();
+    // Remote Config 초기화
+    await RemoteConfigService().initialize();
 
     runApp(
       MultiProvider(

@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>API_KEY</key>
+	<string>AIzaSyAHxyZgHf2QaJTITzYYmVb9erCyEP6lpgo</string>
+	<key>GCM_SENDER_ID</key>
+	<string>538098950942</string>
+	<key>PLIST_VERSION</key>
+	<string>1</string>
+	<key>BUNDLE_ID</key>
+	<string>com.taehun2123.capturevoca</string>
+	<key>PROJECT_ID</key>
+	<string>captureb-c0dfe</string>
+	<key>STORAGE_BUCKET</key>
+	<string>captureb-c0dfe.firebasestorage.app</string>
+	<key>IS_ADS_ENABLED</key>
+	<false></false>
+	<key>IS_ANALYTICS_ENABLED</key>
+	<false></false>
+	<key>IS_APPINVITE_ENABLED</key>
+	<true></true>
+	<key>IS_GCM_ENABLED</key>
+	<true></true>
+	<key>IS_SIGNIN_ENABLED</key>
+	<true></true>
+	<key>GOOGLE_APP_ID</key>
+	<string>1:538098950942:ios:bd9ec933accd6679645f0f</string>
+</dict>
+</plist>

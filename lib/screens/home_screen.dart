@@ -4,6 +4,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:vocabulary_app/screens/purchase_screen.dart';
 import 'package:vocabulary_app/screens/word_edit_screen.dart';
 import 'package:vocabulary_app/services/purchase_service.dart';
+import 'package:vocabulary_app/services/remote_config_service.dart';
 import 'package:vocabulary_app/widgets/modern_flash_card_screen.dart';
 import 'package:vocabulary_app/widgets/modern_quiz_card_screen.dart';
 import 'package:vocabulary_app/widgets/usage_indicator_widget.dart';
@@ -17,6 +18,7 @@ import 'settings_screen.dart';
 import 'test_demo_screen.dart';
 import 'package:provider/provider.dart';
 import '../theme/theme_provider.dart';
+import 'package:vocabulary_app/screens/admin_screen.dart'; // 관리자 화면
 
 class HomePage extends StatefulWidget {
   const HomePage({Key? key}) : super(key: key);
@@ -37,6 +39,9 @@ class _HomePageState extends State<HomePage>
   int _extractedWordsCount = 0; // 추출된 단어 수
   bool _showDetailedProgress = false; // 상세 진행 상태 표시 여부
   int _remainingUsages = 0;
+  bool hasError = false;
+  int _logoTapCount = 0;
+  DateTime? _lastTapTime;
 
   OpenAIVisionService? _openAIService;
   bool _isUsingOpenAI = false;
@@ -291,6 +296,25 @@ class _HomePageState extends State<HomePage>
       return;
     }
 
+    // 단어장 생성 전에 먼저 1회만 크레딧 차감 (여러 이미지를 처리해도 1회만 차감)
+    final hasEnoughCredit = await _purchaseService.useOneCredit();
+    if (!hasEnoughCredit) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('단어장 생성 횟수가 부족합니다.'),
+          action: SnackBarAction(
+            label: '충전하기',
+            onPressed: _navigateToPurchaseScreen,
+          ),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+      );
+      return;
+    }
+
     setState(() {
       _isProcessing = true;
       _showDetailedProgress = true;
@@ -302,6 +326,8 @@ class _HomePageState extends State<HomePage>
     // DAY 입력 다이얼로그 표시
     final String? selectedDay = await _showDaySelectionDialog();
     if (selectedDay == null) {
+      // 취소한 경우 크레딧 복구
+      await _purchaseService.addUsages(1);
       setState(() {
         _isProcessing = false;
       });
@@ -342,8 +368,14 @@ class _HomePageState extends State<HomePage>
             ),
           ),
         );
+        hasError = true;
         break;
       }
+    }
+
+    // 모든 이미지 처리 중 오류가 발생하고 단어를 하나도 추출하지 못했을 경우 크레딧 복구
+    if (hasError && allWords.isEmpty) {
+      await _purchaseService.addUsages(1);
     }
 
     setState(() {
@@ -600,14 +632,34 @@ class _HomePageState extends State<HomePage>
       appBar: AppBar(
         elevation: 0,
         backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
-        title: Text(
-          '찍어보카',
-          style: TextStyle(
-            color: Theme.of(context).brightness == Brightness.dark
-                ? Colors.white
-                : Colors.black87,
-            fontWeight: FontWeight.w600,
-            fontSize: 20,
+        title: GestureDetector(
+          onTap: () {
+            // 현재 시간 가져오기
+            final now = DateTime.now();
+
+            if (_lastTapTime == null ||
+                now.difference(_lastTapTime!).inSeconds > 3) {
+              _logoTapCount = 1;
+            } else {
+              _logoTapCount++;
+            }
+
+            _lastTapTime = now;
+
+            if (_logoTapCount >= 15) {
+              _logoTapCount = 0;
+              _showAdminLogin();
+            }
+          },
+          child: Text(
+            '찍어보카',
+            style: TextStyle(
+              color: Theme.of(context).brightness == Brightness.dark
+                  ? Colors.white
+                  : Colors.black87,
+              fontWeight: FontWeight.w600,
+              fontSize: 20,
+            ),
           ),
         ),
         actions: [
@@ -661,6 +713,76 @@ class _HomePageState extends State<HomePage>
         ],
       ),
     );
+  }
+
+  // 관리자 로그인 다이얼로그 표시 함수
+  void _showAdminLogin() {
+    final TextEditingController passwordController = TextEditingController();
+    final RemoteConfigService remoteConfigService = RemoteConfigService();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        title: Text('관리자 인증'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('관리자 모드에 접근하려면 비밀번호를 입력하세요.'),
+            SizedBox(height: 16),
+            TextField(
+              controller: passwordController,
+              decoration: InputDecoration(
+                labelText: '비밀번호',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              obscureText: true,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text('취소'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              if (remoteConfigService
+                  .verifyAdminPassword(passwordController.text)) {
+                Navigator.of(context).pop();
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => AdminScreen()),
+                );
+              } else {
+                // 비밀번호 불일치
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('비밀번호가 일치하지 않습니다.'),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              }
+              // 항상 컨트롤러 비우기
+              passwordController.clear();
+            },
+            child: Text('로그인'),
+            style: ElevatedButton.styleFrom(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ),
+        ],
+      ),
+    ).then((_) {
+      // 다이얼로그 닫힐 때 컨트롤러 정리
+      passwordController.dispose();
+    });
   }
 
   // 이미지 캡처 탭 UI - 모던한 디자인으로 수정

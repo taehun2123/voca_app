@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "538098950942",
+    "project_id": "captureb-c0dfe",
+    "storage_bucket": "captureb-c0dfe.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:538098950942:android:313e57e4443afabe645f0f",
+        "android_client_info": {
+          "package_name": "com.example.voca_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyACvQPid0pqWaXYkQikSbLzb2qj0pmLeJU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

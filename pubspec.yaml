@@ -1,7 +1,7 @@
 name: vocabulary_app
 description: 이미지에서 영어 단어와 예문을 자동으로 추출하는 앱
 publish_to: 'none'
-version: 1.0.0+1
+version: 1.0.1+1
 
 environment:
   sdk: ">=2.17.0 <3.0.0"

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:vocabulary_app/screens/purchase_screen.dart';
 import 'package:vocabulary_app/screens/word_edit_screen.dart';
+import 'package:vocabulary_app/services/ad_service.dart';
 import 'package:vocabulary_app/services/purchase_service.dart';
 import 'package:vocabulary_app/services/remote_config_service.dart';
 import 'package:vocabulary_app/widgets/modern_flash_card_screen.dart';
@@ -425,6 +426,12 @@ class _HomePageState extends State<HomePage>
         setState(() {
           _extractedWordsCount += words.length;
         });
+
+        // 처리 완료 후 광고 표시 (이 부분 추가)
+        if (!hasError && allWords.isNotEmpty) {
+          final adService = AdService();
+          adService.showInterstitialAd(); // 전면 광고 표시 (결과는 기다리지 않음)
+        }
       } catch (e) {
         print('이미지 처리 중 오류: $e');
         ScaffoldMessenger.of(context).showSnackBar(

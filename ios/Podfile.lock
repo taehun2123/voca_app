@@ -39,6 +39,13 @@ PODS:
     - Flutter
   - flutter_tts (0.0.1):
     - Flutter
+  - Google-Mobile-Ads-SDK (11.13.0):
+    - GoogleUserMessagingPlatform (>= 1.1)
+  - google_mobile_ads (5.3.1):
+    - Flutter
+    - Google-Mobile-Ads-SDK (~> 11.13.0)
+    - webview_flutter_wkwebview
+  - GoogleUserMessagingPlatform (3.0.0)
   - GoogleUtilities/Environment (8.0.2):
     - GoogleUtilities/Privacy
   - GoogleUtilities/Logger (8.0.2):
@@ -65,6 +72,9 @@ PODS:
   - sqflite_darwin (0.0.4):
     - Flutter
     - FlutterMacOS
+  - webview_flutter_wkwebview (0.0.1):
+    - Flutter
+    - FlutterMacOS
 
 DEPENDENCIES:
   - firebase_core (from `.symlinks/plugins/firebase_core/ios`)
@@ -72,11 +82,13 @@ DEPENDENCIES:
   - Flutter (from `Flutter`)
   - flutter_secure_storage (from `.symlinks/plugins/flutter_secure_storage/ios`)
   - flutter_tts (from `.symlinks/plugins/flutter_tts/ios`)
+  - google_mobile_ads (from `.symlinks/plugins/google_mobile_ads/ios`)
   - image_picker_ios (from `.symlinks/plugins/image_picker_ios/ios`)
   - in_app_purchase_storekit (from `.symlinks/plugins/in_app_purchase_storekit/darwin`)
   - path_provider_foundation (from `.symlinks/plugins/path_provider_foundation/darwin`)
   - shared_preferences_foundation (from `.symlinks/plugins/shared_preferences_foundation/darwin`)
   - sqflite_darwin (from `.symlinks/plugins/sqflite_darwin/darwin`)
+  - webview_flutter_wkwebview (from `.symlinks/plugins/webview_flutter_wkwebview/darwin`)
 
 SPEC REPOS:
   trunk:
@@ -88,6 +100,8 @@ SPEC REPOS:
     - FirebaseRemoteConfig
     - FirebaseRemoteConfigInterop
     - FirebaseSharedSwift
+    - Google-Mobile-Ads-SDK
+    - GoogleUserMessagingPlatform
     - GoogleUtilities
     - PromisesObjC
 
@@ -102,6 +116,8 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/flutter_secure_storage/ios"
   flutter_tts:
     :path: ".symlinks/plugins/flutter_tts/ios"
+  google_mobile_ads:
+    :path: ".symlinks/plugins/google_mobile_ads/ios"
   image_picker_ios:
     :path: ".symlinks/plugins/image_picker_ios/ios"
   in_app_purchase_storekit:
@@ -112,6 +128,8 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/shared_preferences_foundation/darwin"
   sqflite_darwin:
     :path: ".symlinks/plugins/sqflite_darwin/darwin"
+  webview_flutter_wkwebview:
+    :path: ".symlinks/plugins/webview_flutter_wkwebview/darwin"
 
 SPEC CHECKSUMS:
   Firebase: 1fe1c0a7d9aaea32efe01fbea5f0ebd8d70e53a2
@@ -127,6 +145,9 @@ SPEC CHECKSUMS:
   Flutter: e0871f40cf51350855a761d2e70bf5af5b9b5de7
   flutter_secure_storage: 7953c38a04c3fdbb00571bcd87d8e3b5ceb9daec
   flutter_tts: 0f492aab6accf87059b72354fcb4ba934304771d
+  Google-Mobile-Ads-SDK: 14f57f2dc33532a24db288897e26494640810407
+  google_mobile_ads: fe0e2c1764ad95323dd0e3081d0bb2d58411f957
+  GoogleUserMessagingPlatform: f8d0cdad3ca835406755d0a69aa634f00e76d576
   GoogleUtilities: 26a3abef001b6533cf678d3eb38fd3f614b7872d
   image_picker_ios: c560581cceedb403a6ff17f2f816d7fea1421fc1
   in_app_purchase_storekit: a1ce04056e23eecc666b086040239da7619cd783
@@ -134,6 +155,7 @@ SPEC CHECKSUMS:
   PromisesObjC: f5707f49cb48b9636751c5b2e7d227e43fba9f47
   shared_preferences_foundation: fcdcbc04712aee1108ac7fda236f363274528f78
   sqflite_darwin: 5a7236e3b501866c1c9befc6771dfd73ffb8702d
+  webview_flutter_wkwebview: a4af96a051138e28e29f60101d094683b9f82188
 
 PODFILE CHECKSUM: 251cb053df7158f337c0712f2ab29f4e0fa474ce
 

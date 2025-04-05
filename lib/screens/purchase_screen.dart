@@ -3,6 +3,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
+import 'package:vocabulary_app/services/ad_service.dart';
 import 'package:vocabulary_app/services/purchase_service.dart';
 
 class PurchaseScreen extends StatefulWidget {
@@ -19,6 +20,8 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
   String _statusMessage = '';
   bool _hasError = false;
   StreamSubscription<PurchaseState>? _purchaseStateSubscription;
+  // 광고 서비스 추가
+  final AdService _adService = AdService();
 
   @override
   void initState() {
@@ -222,7 +225,18 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
                       ),
 
                       SizedBox(height: 24),
-
+                      // 무료 광고 시청 옵션 추가
+                      SizedBox(height: 24),
+                      Text(
+                        '무료로 충전하기',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: theme.textTheme.titleLarge?.color,
+                        ),
+                      ),
+                      SizedBox(height: 16),
+                      _buildWatchAdCard(),
                       // 구매 옵션 설명
                       Text(
                         '사용권 구매',
@@ -303,6 +317,150 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
                 ),
     );
   }
+
+    // 광고 시청 카드 위젯 추가
+  Widget _buildWatchAdCard() {
+    final theme = Theme.of(context);
+    final isDarkMode = theme.brightness == Brightness.dark;
+    
+    return Card(
+      margin: EdgeInsets.only(bottom: 16),
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(
+          color: isDarkMode ? Colors.purple.shade700 : Colors.purple.shade300,
+        ),
+      ),
+      child: InkWell(
+        onTap: _watchAdForCredits,
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Container(
+                padding: EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: isDarkMode
+                      ? Colors.purple.shade900.withOpacity(0.3)
+                      : Colors.purple.shade50,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.ondemand_video,
+                  color: isDarkMode ? Colors.purple.shade300 : Colors.purple,
+                  size: 24,
+                ),
+              ),
+              SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '광고 시청으로 무료 충전',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        color: isDarkMode
+                            ? Colors.white
+                            : theme.textTheme.bodyLarge?.color,
+                      ),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      '30초 광고를 시청하고 1회 무료 충전받기',
+                      style: TextStyle(
+                        color: isDarkMode
+                            ? Colors.grey.shade300
+                            : Colors.grey.shade700,
+                      ),
+                    ),
+                    SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.add_circle_outline,
+                          size: 14,
+                          color:
+                              isDarkMode ? Colors.purple.shade300 : Colors.purple,
+                        ),
+                        SizedBox(width: 4),
+                        Text(
+                          '+1회',
+                          style: TextStyle(
+                            color: isDarkMode ? Colors.purple.shade300 : Colors.purple,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: isDarkMode
+                      ? Colors.purple.shade900.withOpacity(0.5)
+                      : Colors.purple.shade100,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  '무료',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: isDarkMode
+                        ? Colors.purple.shade300
+                        : Colors.purple.shade800,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+    // 광고 시청으로 크레딧 획득 메서드
+  Future<void> _watchAdForCredits() async {
+    // 로딩 표시
+    setState(() {
+      _isLoading = true;
+      _statusMessage = '광고 준비 중...';
+    });
+    
+    try {
+      final result = await _purchaseService.addCreditByWatchingAd();
+      
+      // 광고 시청 완료 후
+      if (result) {
+        // 사용량 다시 로드
+        await _loadData();
+        
+        // 성공 메시지 표시
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('광고 시청 완료! 1회 충전되었습니다.'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } else {
+        setState(() {
+          _isLoading = false;
+          _statusMessage = '광고를 불러올 수 없습니다. 나중에 다시 시도해주세요.';
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+        _statusMessage = '광고 처리 중 오류가 발생했습니다: $e';
+      });
+    }
+  }
+  
 
   Widget _buildProductCard(ProductDetails product) {
     // 상품 ID에 따라 정보 설정

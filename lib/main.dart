@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'; // SystemChrome 사용을 위한 import 추가
 import 'package:provider/provider.dart';
 import 'package:sqflite/sqflite.dart';
+import 'package:vocabulary_app/services/ad_service.dart';
 import 'package:vocabulary_app/services/db_service.dart';
 import 'package:vocabulary_app/services/purchase_service.dart';
 import 'package:vocabulary_app/services/remote_config_service.dart';
@@ -23,6 +24,8 @@ void main() async {
   final dbService = DBService();
   // 구매 서비스 초기화
   final purchaseService = PurchaseService();
+  // 광고 서비스 초기화
+  final adService = AdService();
 
   try {
     print('앱 시작: 데이터베이스 초기화 중...');
@@ -60,6 +63,8 @@ void main() async {
     await Firebase.initializeApp();
     // Remote Config 초기화
     await RemoteConfigService().initialize();
+    // 광고 서비스 초기화 (추가)
+    await adService.initialize();
 
     runApp(
       MultiProvider(

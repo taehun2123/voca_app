@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
 import 'package:vocabulary_app/model/purchase_model.dart';
+import 'package:vocabulary_app/services/ad_service.dart';
 import 'package:vocabulary_app/utils/constants.dart';
 
 class PurchaseService {
@@ -120,6 +121,23 @@ class PurchaseService {
       }
     }
   }
+  
+  Future<bool> addCreditByWatchingAd() async {
+  try {
+    final adService = AdService();
+    final bool adCompleted = await adService.showRewardedAd();
+    
+    if (adCompleted) {
+      // 광고 시청 완료 시 1회 사용량 추가
+      await addUsages(1);
+      return true;
+    }
+    return false;
+  } catch (e) {
+    debugPrint('광고 시청 보상 적용 중 오류: $e');
+    return false;
+  }
+}
   
   // 구매 성공 처리
   Future<void> _handleSuccessfulPurchase(PurchaseDetails purchaseDetails) async {

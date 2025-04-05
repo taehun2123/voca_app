@@ -8,8 +8,8 @@ class AppConstants {
   static const String credits30ProductId = 'com.taehun2123.capturevoca.credits.30';
   static const String credits60ProductId = 'com.taehun2123.capturevoca.credits.60';
 
-  // 초기 무료 사용량xz
-  static const int initialFreeCredits = 7;
+  // 초기 무료 사용량
+  static const int initialFreeCredits = 10;
   
   // API 키 보호를 위한 XOR 시크릿 키
   static final List<int> apiKeySecret = utf8.encode('vocabularyAppSecretKey2025');

@@ -323,7 +323,7 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
       productIcon = Icons.auto_stories;
     } else if (product.id.contains('60')) {
       title = '60회 추가 이용권';
-      description = '단어장 생성 100회 이용권';
+      description = '단어장 생성 60회 이용권';
       usageCount = 60;
       productIcon = Icons.auto_stories;
     }

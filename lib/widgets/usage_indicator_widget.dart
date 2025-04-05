@@ -91,24 +91,6 @@ class UsageIndicatorWidget extends StatelessWidget {
           if (remainingUsages <= 5)
             Row(
               children: [
-                ElevatedButton.icon(
-                  onPressed: () => _watchAdForCredits(context),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: isDarkMode
-                        ? Colors.purple.shade900
-                        : Colors.purple.shade100,
-                    foregroundColor: isDarkMode
-                        ? Colors.purple.shade300
-                        : Colors.purple.shade700,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  ),
-                  icon: Icon(Icons.ondemand_video, size: 16),
-                  label: const Text('무료'),
-                ),
                 ElevatedButton(
                   onPressed: onBuyPressed,
                   style: ElevatedButton.styleFrom(

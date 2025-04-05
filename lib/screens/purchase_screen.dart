@@ -223,18 +223,19 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
                           ],
                         ),
                       ),
-
-                      SizedBox(height: 24),
-                      // 무료 광고 시청 옵션 추가
-                      SizedBox(height: 24),
-                      Text(
-                        '무료로 충전하기',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: theme.textTheme.titleLarge?.color,
-                        ),
-                      ),
+                      if (_remainingUsages <= 0) ...[
+                          const SizedBox(height: 24),
+                          Text(
+                            '무료로 충전하기',
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              color: theme.textTheme.titleLarge?.color,
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          _buildWatchAdCard(),
+                      ],
                       SizedBox(height: 16),
                       _buildWatchAdCard(),
                       // 구매 옵션 설명
@@ -318,11 +319,11 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
     );
   }
 
-    // 광고 시청 카드 위젯 추가
+  // 광고 시청 카드 위젯 추가
   Widget _buildWatchAdCard() {
     final theme = Theme.of(context);
     final isDarkMode = theme.brightness == Brightness.dark;
-    
+
     return Card(
       margin: EdgeInsets.only(bottom: 16),
       elevation: 0,
@@ -383,14 +384,17 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
                         Icon(
                           Icons.add_circle_outline,
                           size: 14,
-                          color:
-                              isDarkMode ? Colors.purple.shade300 : Colors.purple,
+                          color: isDarkMode
+                              ? Colors.purple.shade300
+                              : Colors.purple,
                         ),
                         SizedBox(width: 4),
                         Text(
                           '+1회',
                           style: TextStyle(
-                            color: isDarkMode ? Colors.purple.shade300 : Colors.purple,
+                            color: isDarkMode
+                                ? Colors.purple.shade300
+                                : Colors.purple,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
@@ -424,22 +428,22 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
     );
   }
 
-    // 광고 시청으로 크레딧 획득 메서드
+  // 광고 시청으로 크레딧 획득 메서드
   Future<void> _watchAdForCredits() async {
     // 로딩 표시
     setState(() {
       _isLoading = true;
       _statusMessage = '광고 준비 중...';
     });
-    
+
     try {
       final result = await _purchaseService.addCreditByWatchingAd();
-      
+
       // 광고 시청 완료 후
       if (result) {
         // 사용량 다시 로드
         await _loadData();
-        
+
         // 성공 메시지 표시
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -460,7 +464,6 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
       });
     }
   }
-  
 
   Widget _buildProductCard(ProductDetails product) {
     // 상품 ID에 따라 정보 설정

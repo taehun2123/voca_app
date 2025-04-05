@@ -236,6 +236,7 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
                           const SizedBox(height: 16),
                           _buildWatchAdCard(),
                       ],
+                      const SizedBox(height: 24),
                       // 구매 옵션 설명
                       Text(
                         '사용권 구매',

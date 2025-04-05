@@ -48,6 +48,8 @@ class _HomePageState extends State<HomePage>
   Map<String, List<WordEntry>> _dayCollections = {};
 
   late TabController _tabController;
+  int _previousTabIndex = 0; // 이전 탭 인덱스 저장용 변수 추가
+  bool _hasShownProcessingWarning = false; // 경고 메시지 표시 여부 추적
 
   @override
   void initState() {
@@ -147,24 +149,40 @@ class _HomePageState extends State<HomePage>
   }
 
   void _handleTabChange() {
-    // 이미지 처리 중인 경우 탭 변경 방지
-    if (_isProcessing && _tabController.indexIsChanging) {
-      // 처리 중에는 첫 번째 탭으로 강제 복귀
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _tabController.animateTo(0); // 첫 번째 탭 인덱스(0)으로 되돌림
+    // 탭이 실제로 변경될 때만 처리 (인덱스가 변경된 경우만)
+    if (_tabController.indexIsChanging ||
+        _tabController.index != _previousTabIndex) {
+      print('탭 변경 감지: ${_previousTabIndex} -> ${_tabController.index}');
 
-        // 사용자에게 알림
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('이미지 처리 중에는 탭을 변경할 수 없습니다.'),
-            behavior: SnackBarBehavior.floating,
-            duration: Duration(seconds: 2),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
-          ),
-        );
-      });
+      // 이미지 처리 중인 경우 탭 변경 방지
+      if (_isProcessing) {
+        print('이미지 처리 중 탭 변경 시도 차단');
+
+        // 변경을 방지하고 원래 탭으로 되돌림
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          // 애니메이션 없이 이전 탭으로 즉시 돌아감
+          _tabController.index = 0; // 항상 첫 번째 탭으로 고정
+
+          // 메시지를 아직 표시하지 않은 경우에만 표시
+          if (!_hasShownProcessingWarning) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('이미지 처리 중에는 탭을 변경할 수 없습니다.'),
+                behavior: SnackBarBehavior.floating,
+                duration: Duration(seconds: 2),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+            );
+            // 메시지 표시 상태 업데이트
+            _hasShownProcessingWarning = true;
+          }
+        });
+      } else {
+        // 처리 중이 아닌 경우 이전 탭 인덱스 업데이트
+        _previousTabIndex = _tabController.index;
+      }
     }
   }
 
@@ -302,6 +320,20 @@ class _HomePageState extends State<HomePage>
   }
 
   Future<void> _processBatchImages() async {
+    // 이미 처리 중이라면 중복 요청 방지
+    if (_isProcessing) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('이미지 처리가 이미 진행 중입니다.'),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+      );
+      return;
+    }
+
     // OpenAI 서비스 확인
     if (_openAIService == null) {
       print('OpenAI 서비스가 null입니다. 재초기화 시도...');
@@ -342,20 +374,6 @@ class _HomePageState extends State<HomePage>
       return;
     }
 
-    // 이미 처리 중이라면 중복 요청 방지
-    if (_isProcessing) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('이미지 처리가 이미 진행 중입니다.'),
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
-        ),
-      );
-      return;
-    }
-
     // 단어장 생성 전에 먼저 1회만 크레딧 차감 (여러 이미지를 처리해도 1회만 차감)
     final hasEnoughCredit = await _purchaseService.useOneCredit();
     if (!hasEnoughCredit) {
@@ -375,7 +393,6 @@ class _HomePageState extends State<HomePage>
       return;
     }
 
-    // 여기에 크레딧 차감 여부를 추적하는 변수 추가
     bool creditUsed = true;
 
     setState(() {
@@ -384,6 +401,9 @@ class _HomePageState extends State<HomePage>
       _processedImages = 0;
       _totalImagesToProcess = _batchImages.length;
       _extractedWordsCount = 0;
+      _tabController.index = 0;
+      _previousTabIndex = 0;
+      _hasShownProcessingWarning = false; // 새 처리 작업 시작 시 경고 상태 초기화
     });
 
     // DAY 입력 다이얼로그 표시
@@ -460,6 +480,7 @@ class _HomePageState extends State<HomePage>
     setState(() {
       _isProcessing = false;
       _batchImages = []; // 배치 이미지 초기화
+      _hasShownProcessingWarning = false; // 처리 완료 시 경고 상태 초기화
     });
 
     if (allWords.isEmpty) {
@@ -829,6 +850,26 @@ class _HomePageState extends State<HomePage>
       appBar: AppBar(
         elevation: 0,
         backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
+              // Shop 아이콘을 좌측에 배치하기 위한 leading 위젯 설정
+      leading: IconButton(
+        icon: Icon(
+          Icons.shopping_cart,
+          color: Theme.of(context).brightness == Brightness.dark
+              ? Colors.amber.shade300
+              : Colors.amber.shade800,
+        ),
+        onPressed: () {
+          // 인앱결제 화면으로 이동
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => PurchaseScreen()),
+          ).then((_) {
+            // 돌아왔을 때 사용량 갱신
+            _loadRemainingUsages();
+          });
+        },
+        tooltip: '충전하기',
+      ),
         title: GestureDetector(
           onTap: () {
             // 현재 시간 가져오기
@@ -885,6 +926,28 @@ class _HomePageState extends State<HomePage>
           indicatorColor: Theme.of(context).tabBarTheme.indicatorColor,
           indicatorWeight: 3,
           labelStyle: TextStyle(fontWeight: FontWeight.w600),
+          // 이미지 처리 중일 때 탭 비활성화 처리
+          onTap: (index) {
+            if (_isProcessing && index != 0) {
+              // 이미지 처리 중이고 첫 번째 탭이 아닌 다른 탭 선택 시
+              // 메시지를 아직 표시하지 않은 경우에만 표시
+              if (!_hasShownProcessingWarning) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('이미지 처리 중에는 탭을 변경할 수 없습니다.'),
+                    behavior: SnackBarBehavior.floating,
+                    duration: Duration(seconds: 2),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                );
+                // 메시지 표시 상태 업데이트
+                _hasShownProcessingWarning = true;
+              }
+              _tabController.index = 0;
+            }
+          },
           tabs: const [
             Tab(icon: Icon(Icons.camera_alt), text: '단어 추가'),
             Tab(icon: Icon(Icons.book), text: '단어장'),
@@ -895,6 +958,9 @@ class _HomePageState extends State<HomePage>
       ),
       body: TabBarView(
         controller: _tabController,
+        physics: _isProcessing
+            ? NeverScrollableScrollPhysics() // 이미지 처리 중일 때 스와이프 비활성화
+            : AlwaysScrollableScrollPhysics(), // 그 외에는 정상 작동
         children: [
           // 첫 번째 탭: 이미지 캡처 및 처리
           _buildCaptureTab(),

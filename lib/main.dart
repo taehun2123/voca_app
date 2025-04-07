@@ -7,6 +7,7 @@ import 'package:vocabulary_app/services/ad_service.dart';
 import 'package:vocabulary_app/services/db_service.dart';
 import 'package:vocabulary_app/services/purchase_service.dart';
 import 'package:vocabulary_app/services/remote_config_service.dart';
+import 'package:vocabulary_app/services/tracking_permission_service.dart';
 import 'package:vocabulary_app/theme/app_themes.dart';
 import 'package:vocabulary_app/theme/theme_provider.dart';
 import 'screens/home_screen.dart';
@@ -26,9 +27,14 @@ void main() async {
   final purchaseService = PurchaseService();
   // 광고 서비스 초기화
   final adService = AdService();
+    // ATT 권한 요청 서비스 초기화
+  final trackingPermissionService = TrackingPermissionService();
 
   try {
     print('앱 시작: 데이터베이스 초기화 중...');
+
+    // iOS에서 ATT 권한 요청 (앱 초기화 시점에 바로 요청)
+    await trackingPermissionService.requestTrackingPermission();
 
     // 데이터베이스 접근 및 기본 쿼리 실행해보기
     final db = await dbService.database;

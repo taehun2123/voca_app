@@ -1,7 +1,8 @@
-// lib/services/ad_service.dart
+// lib/services/ad_service.dart (수정)
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
+import 'package:vocabulary_app/services/tracking_permission_service.dart';
 
 class AdService {
   static final AdService _instance = AdService._internal();
@@ -20,12 +21,23 @@ class AdService {
   RewardedAd? _rewardedAd;
   bool _isInterstitialAdLoading = false;
   bool _isRewardedAdLoading = false;
+  
+  // 권한 서비스 인스턴스
+  final _trackingPermissionService = TrackingPermissionService();
 
-  // 초기화
+  // 초기화 - ATT 권한 요청 추가
   Future<void> initialize() async {
+    // 앱 추적 투명성 권한 요청 (iOS)
+    await _trackingPermissionService.requestTrackingPermission();
+    
+    // MobileAds 초기화
     await MobileAds.instance.initialize();
+    
+    // 광고 로드
     _loadInterstitialAd();
     _loadRewardedAd();
+    
+    debugPrint('광고 서비스 초기화 완료');
   }
 
   // 전면 광고 로드
@@ -74,6 +86,10 @@ class AdService {
 
   // 전면 광고 표시
   Future<bool> showInterstitialAd() async {
+    // 먼저 권한 확인
+    final hasPermission = await _trackingPermissionService.isTrackingPermissionGranted();
+    debugPrint('광고 추적 권한 상태: $hasPermission');
+    
     if (_interstitialAd == null) {
       _loadInterstitialAd();
       return false;
@@ -108,6 +124,10 @@ class AdService {
 
   // 보상형 광고 표시
   Future<bool> showRewardedAd() async {
+    // 먼저 권한 확인
+    final hasPermission = await _trackingPermissionService.isTrackingPermissionGranted();
+    debugPrint('광고 추적 권한 상태: $hasPermission');
+    
     if (_rewardedAd == null) {
       _loadRewardedAd();
       return false;

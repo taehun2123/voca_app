@@ -54,8 +54,8 @@ flutter_native_splash:
   color: "#FFFFFF"  # 배경색 (흰색)
   image: assets/splash.png  # 스플래시 이미지 경로
   # 또는 색상 배경에 텍스트 표시
-  # color_dark: "#121212"  # 다크모드 배경색
-  # image_dark: assets/splash_dark.png  # 다크모드 이미지
+  color_dark: "#121212"  # 다크모드 배경색
+  image_dark: assets/splash.png  # 다크모드 이미지
   android_12:
     image: assets/splash.png  # Android 12 이상용 이미지
     icon_background_color: "#FFFFFF"

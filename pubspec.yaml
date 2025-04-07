@@ -1,7 +1,7 @@
 name: vocabulary_app
 description: 이미지에서 영어 단어와 예문을 자동으로 추출하는 앱
 publish_to: 'none'
-version: 1.0.3+1
+version: 1.0.2+1
 
 environment:
   sdk: ">=2.17.0 <3.0.0"
@@ -32,6 +32,7 @@ dev_dependencies:
   flutter_lints: ^2.0.0
   hive_generator: ^1.1.3
   build_runner: ^2.2.0
+  flutter_native_splash: ^2.3.10  # 최신 버전을 사용하세요
 
 flutter:
   uses-material-design: true
@@ -48,3 +49,16 @@ flutter:
           weight: 500
         - asset: assets/fonts/Pretendard-Bold.ttf
           weight: 700
+
+flutter_native_splash:
+  color: "#FFFFFF"  # 배경색 (흰색)
+  image: assets/splash.png  # 스플래시 이미지 경로
+  # 또는 색상 배경에 텍스트 표시
+  # color_dark: "#121212"  # 다크모드 배경색
+  # image_dark: assets/splash_dark.png  # 다크모드 이미지
+  android_12:
+    image: assets/splash.png  # Android 12 이상용 이미지
+    icon_background_color: "#FFFFFF"
+  fullscreen: true
+  android: true
+  ios: true

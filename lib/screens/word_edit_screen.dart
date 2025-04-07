@@ -4,11 +4,15 @@ import '../model/word_entry.dart';
 class WordEditScreen extends StatefulWidget {
   final List<WordEntry> words;
   final String dayName;
+  final List<WordEntry>? newWords; // 새 단어 목록 (선택 사항)
+  final bool isFromImageRecognition; // 새로 추가한 플래그
 
   const WordEditScreen({
     Key? key,
     required this.words,
     required this.dayName,
+    this.newWords,
+    this.isFromImageRecognition = false, // 기본값은 false
   }) : super(key: key);
 
   @override
@@ -351,6 +355,12 @@ class _WordEditScreenState extends State<WordEditScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // 새 단어 목록 확인
+    final hasNewWords = widget.newWords != null && widget.newWords!.isNotEmpty;
+
+    // 새 단어의 단어 텍스트만 추출 (비교용)
+    final newWordTexts =
+        hasNewWords ? widget.newWords!.map((w) => w.word).toSet() : <String>{};
     return Scaffold(
       appBar: AppBar(
         title: Text('단어장 편집'),
@@ -413,6 +423,47 @@ class _WordEditScreenState extends State<WordEditScreen> {
                       ],
                     ),
                   ),
+                // 새 단어가 있는 경우 안내 메시지 추가
+                if (hasNewWords)
+                  Container(
+                    margin: EdgeInsets.only(top: 12),
+                    padding: EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? Colors.amber.shade900.withOpacity(0.3)
+                          : Colors.amber.shade50,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? Colors.amber.shade700
+                            : Colors.amber.shade200,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.info_outline,
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? Colors.amber.shade300
+                              : Colors.amber.shade800,
+                          size: 18,
+                        ),
+                        SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            '새로 추가된 ${widget.newWords!.length}개의 단어는 하이라이트 표시됩니다.',
+                            style: TextStyle(
+                              color: Theme.of(context).brightness ==
+                                      Brightness.dark
+                                  ? Colors.amber.shade300
+                                  : Colors.amber.shade800,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
               ],
             ),
           ),
@@ -439,6 +490,8 @@ class _WordEditScreenState extends State<WordEditScreen> {
                     },
                     itemBuilder: (context, index) {
                       final word = _editableWords[index];
+                      final isNewWord =
+                          newWordTexts.contains(word.word); // 새로 추가한 부분
                       return Dismissible(
                         key: Key('word_${index}_${word.word}'),
                         background: Container(
@@ -470,11 +523,68 @@ class _WordEditScreenState extends State<WordEditScreen> {
                         },
                         child: Card(
                           margin: const EdgeInsets.symmetric(
-                              horizontal: 10, vertical: 5),
+                            horizontal: 10,
+                            vertical: 5,
+                          ),
+                          color: isNewWord
+                              ? (Theme.of(context).brightness == Brightness.dark
+                                  ? Colors.amber.shade900.withOpacity(0.3)
+                                  : Colors.amber.shade50)
+                              : null, // 기존 단어는 기본 색상 사용
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            side: isNewWord
+                                ? BorderSide(
+                                    color: Theme.of(context).brightness ==
+                                            Brightness.dark
+                                        ? Colors.amber.shade700
+                                        : Colors.amber.shade200,
+                                    width: 1.5,
+                                  )
+                                : BorderSide(
+                                    color: Theme.of(context).brightness ==
+                                            Brightness.dark
+                                        ? Colors.grey.shade800
+                                        : Colors.grey.shade200,
+                                  ),
+                          ),
                           child: ListTile(
-                            title: Text(
-                              word.word,
-                              style: TextStyle(fontWeight: FontWeight.bold),
+                            title: Row(
+                              children: [
+                                if (isNewWord)
+                                  Container(
+                                    margin: EdgeInsets.only(right: 8),
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: 6,
+                                      vertical: 2,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Theme.of(context).brightness ==
+                                              Brightness.dark
+                                          ? Colors.amber.shade800
+                                          : Colors.amber.shade200,
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Text(
+                                      'NEW',
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                        color: Theme.of(context).brightness ==
+                                                Brightness.dark
+                                            ? Colors.black
+                                            : Colors.amber.shade900,
+                                      ),
+                                    ),
+                                  ),
+                                Expanded(
+                                  child: Text(
+                                    word.word,
+                                    style:
+                                        TextStyle(fontWeight: FontWeight.bold),
+                                  ),
+                                ),
+                              ],
                             ),
                             subtitle: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -521,17 +631,63 @@ class _WordEditScreenState extends State<WordEditScreen> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              OutlinedButton(
-                onPressed: () {
-                  // '취소' 대신 '다시 시도' 버튼으로 변경
-                  // 이전 화면으로 돌아가되, 다시 인식 시도 요청
-                  Navigator.of(context).pop({'retry': true});
-                },
-                child: Text('다시 인식하기'),
-              ),
+              if (widget.isFromImageRecognition)
+                // 다시 인식하기 버튼을 OutlinedButton으로 변경
+                OutlinedButton.icon(
+                  onPressed: () {
+                    // 사용자에게 확인 다이얼로그 표시
+                    showDialog(
+                      context: context,
+                      builder: (context) => AlertDialog(
+                        title: Text('다시 인식하기'),
+                        content: Text('현재 단어장 편집을 취소하고 같은 이미지로 다시 인식하시겠습니까?'),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.of(context).pop(),
+                            child: Text('취소'),
+                          ),
+                          ElevatedButton(
+                            onPressed: () {
+                              // 다이얼로그 닫기
+                              Navigator.of(context).pop();
+                              // 이전 화면으로 돌아가되, 다시 인식 시도 요청
+                              // 크레딧 소모없이 동일한 이미지로 다시 시도하도록 신호 전달
+                              Navigator.of(context).pop({'retry': true});
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.blue,
+                            ),
+                            child: Text('다시 인식하기'),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                  icon: Icon(Icons.refresh),
+                  label: Text('다시 인식하기'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor:
+                        Theme.of(context).brightness == Brightness.dark
+                            ? Colors.blue.shade300
+                            : Colors.blue.shade700,
+                  ),
+                )
+              else
+                const SizedBox(),
               ElevatedButton(
                 // 항상 활성화 (조건 제거)
                 onPressed: () {
+                  // 저장할 단어가 없는 경우 경고
+                  if (_editableWords.isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('저장할 단어가 없습니다.'),
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                    return;
+                  }
+
                   // 수정된 단어와 DAY 이름을 함께 반환
                   Navigator.of(context).pop({
                     'words': _editableWords,

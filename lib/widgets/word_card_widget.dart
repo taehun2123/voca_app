@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../model/word_entry.dart';
 import '../services/tts_service.dart';
+import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 
 class WordCardWidget extends StatefulWidget {
   final WordEntry word;
@@ -16,6 +17,39 @@ class WordCardWidget extends StatefulWidget {
 
   @override
   State<WordCardWidget> createState() => _WordCardWidgetState();
+}
+
+class AnimatedWordCard extends StatelessWidget {
+  final WordEntry word;
+  final Function(String, {AccentType? accent}) onSpeakWord;
+  final Function(String, bool) onUpdateMemorizedStatus;
+  final int index;
+  
+  const AnimatedWordCard({
+    Key? key,
+    required this.word,
+    required this.onSpeakWord,
+    required this.onUpdateMemorizedStatus,
+    required this.index,
+  }) : super(key: key);
+  
+  @override
+  Widget build(BuildContext context) {
+    return AnimationConfiguration.staggeredList(
+      position: index,
+      duration: const Duration(milliseconds: 375),
+      child: SlideAnimation(
+        verticalOffset: 50.0,
+        child: FadeInAnimation(
+          child: WordCardWidget(
+            word: word,
+            onSpeakWord: onSpeakWord,
+            onUpdateMemorizedStatus: onUpdateMemorizedStatus,
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class _WordCardWidgetState extends State<WordCardWidget> {

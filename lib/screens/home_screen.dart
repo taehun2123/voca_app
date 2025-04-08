@@ -79,17 +79,6 @@ class _HomePageState extends State<HomePage>
     }
   }
 
-  // 구매 화면으로 이동하는 함수
-  void _navigateToPurchaseScreen() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => PurchaseScreen()),
-    ).then((_) {
-      // 돌아왔을 때 사용량 갱신
-      _loadRemainingUsages();
-    });
-  }
-
   Future<void> _initializeOpenAI() async {
     try {
       print('OpenAI 서비스 초기화 시작');
@@ -149,6 +138,18 @@ class _HomePageState extends State<HomePage>
     }
   }
 
+  // 구매 화면으로 이동하는 함수
+  void _navigateToPurchaseScreen() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => PurchaseScreen()),
+    ).then((_) {
+      // 돌아왔을 때 사용량 갱신
+      _loadRemainingUsages();
+    });
+  }
+
+// 탭 변경 핸들러
   void _handleTabChange() {
     // 탭이 실제로 변경될 때만 처리 (인덱스가 변경된 경우만)
     if (_tabController.indexIsChanging ||
@@ -187,6 +188,7 @@ class _HomePageState extends State<HomePage>
     }
   }
 
+  //단어 로딩 알고리즘
   Future<void> _loadSavedWords() async {
     try {
       print('단어 로드 시작');
@@ -251,6 +253,7 @@ class _HomePageState extends State<HomePage>
     }
   }
 
+  //이미지 촬영 관련
   Future<void> _takePhoto() async {
     final XFile? photo = await _picker.pickImage(source: ImageSource.camera);
     if (photo != null) {
@@ -267,6 +270,7 @@ class _HomePageState extends State<HomePage>
     }
   }
 
+  //이미지 선택 관련
   Future<void> _pickImage() async {
     final List<XFile>? images = await _picker.pickMultiImage();
     if (images != null && images.isNotEmpty) {
@@ -291,6 +295,7 @@ class _HomePageState extends State<HomePage>
     }
   }
 
+  //이미지 더 촬영 관련 함수
   void _showMoreImagesDialog() {
     showDialog(
       context: context,
@@ -320,6 +325,7 @@ class _HomePageState extends State<HomePage>
     );
   }
 
+  //이미지 처리 프로세스 함수
   Future<void> _processBatchImages() async {
     // 이미 처리 중이라면 중복 요청 방지
     if (_isProcessing) {
@@ -545,7 +551,7 @@ class _HomePageState extends State<HomePage>
       );
     }
 
-// 중복 제거 후 남은 단어가 없는 경우 크레딧 복구
+    // 중복 제거 후 남은 단어가 없는 경우 크레딧 복구
     if (uniqueWords.isEmpty) {
       if (creditUsed) {
         print('중복 제거 후 저장할 단어가 없어 크레딧 복구');
@@ -565,12 +571,12 @@ class _HomePageState extends State<HomePage>
       return;
     }
 
-// 다른 단어장에 중복 단어가 있는지 확인 및 처리
+    // 다른 단어장에 중복 단어가 있는지 확인 및 처리
     Map<String, List<String>> duplicatesInOtherCollections =
         await _checkWordExistsInOtherCollections(
             uniqueWords.values.toList(), _currentDay);
 
-// 다른 단어장에 중복 단어가 있는 경우
+    // 다른 단어장에 중복 단어가 있는 경우
     if (duplicatesInOtherCollections.isNotEmpty) {
       // 사용자에게 중복 단어 경고 다이얼로그 표시
       bool allowDuplicates =
@@ -651,13 +657,13 @@ class _HomePageState extends State<HomePage>
       }
     }
 
-// 전체 단어 목록 준비 (기존 단어 + 새 단어)
+    // 전체 단어 목록 준비 (기존 단어 + 새 단어)
     List<WordEntry> combinedWords = [];
 
-// 기존 단어 추가 (기존 단어와 같은 순서 유지)
+    // 기존 단어 추가 (기존 단어와 같은 순서 유지)
     combinedWords.addAll(existingWords);
 
-// 새 단어 추가 (중복 제거된 단어들)
+    // 새 단어 추가 (중복 제거된 단어들)
     combinedWords.addAll(uniqueWords.values.toList());
 
     // 모든 처리 완료 후 광고 표시 (단 한 번만)
@@ -671,7 +677,7 @@ class _HomePageState extends State<HomePage>
       }
     }
 
-// 단어 편집 화면으로 이동 (전체 단어 목록 전달)
+    // 단어 편집 화면으로 이동 (전체 단어 목록 전달)
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
@@ -803,9 +809,8 @@ class _HomePageState extends State<HomePage>
         // 저장 중 오류 발생 시 크레딧 복구 고려 (옵션)
         if (creditUsed) {
           print('단어 저장 중 오류 발생으로 크레딧 복구 (선택적)');
-          // 아래 줄의 주석을 해제하면 저장 오류 시에도 크레딧을 복구합니다
-          // await _purchaseService.addUsages(1);
-          // creditUsed = false;
+          await _purchaseService.addUsages(1);
+          creditUsed = false;
         }
 
         ScaffoldMessenger.of(context).showSnackBar(
@@ -1550,7 +1555,6 @@ class _HomePageState extends State<HomePage>
                       style: TextStyle(fontSize: 14, color: Colors.grey),
                     ),
                     const SizedBox(height: 22),
-// API 키 관련 UI는 제거하고 대신 간단한 정보 표시
                     Container(
                       decoration: BoxDecoration(
                         color: Theme.of(context).brightness == Brightness.dark
@@ -1603,7 +1607,6 @@ class _HomePageState extends State<HomePage>
                 ),
               ),
             ),
-// 진행 상태 표시 위젯 수정
           if (_isProcessing)
             Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -1742,6 +1745,10 @@ class _HomePageState extends State<HomePage>
                   borderRadius: BorderRadius.circular(12),
                 ),
                 padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                backgroundColor: Theme.of(context).brightness == Brightness.dark
+                    ? Colors.green.shade700 // 다크모드
+                    : Colors.green.shade500, // 라이트모드
+                foregroundColor: Colors.white, // 텍스트는 항상 흰색으로
               ),
             ),
           ],
@@ -1751,19 +1758,14 @@ class _HomePageState extends State<HomePage>
 
     return Column(
       children: [
-        // DAY 선택 드롭다운 및 관리 버튼
-        // _buildWordListTab() 함수 내 단어장 선택 드롭다운 수정 부분
         Container(
           padding: const EdgeInsets.all(16),
           margin: const EdgeInsets.only(bottom: 8),
           decoration: BoxDecoration(
-            color:
-                Theme.of(context).cardColor, // 하드코딩된 Colors.white 대신 테마 색상 사용
+            color: Theme.of(context).cardColor,
             boxShadow: [
               BoxShadow(
-                color: Theme.of(context)
-                    .shadowColor
-                    .withOpacity(0.1), // 테마 그림자 색상 사용
+                color: Theme.of(context).shadowColor.withOpacity(0.1),
                 offset: Offset(0, 2),
                 blurRadius: 6,
                 spreadRadius: 1,
@@ -1937,6 +1939,11 @@ class _HomePageState extends State<HomePage>
                           ),
                           padding: EdgeInsets.symmetric(
                               horizontal: 16, vertical: 12),
+                          backgroundColor:
+                              Theme.of(context).brightness == Brightness.dark
+                                  ? Colors.green.shade700 // 다크모드
+                                  : Colors.green.shade500, // 라이트모드
+                          foregroundColor: Colors.white, // 텍스트는 항상 흰색으로
                           elevation: 0,
                         ),
                       ),
@@ -2504,7 +2511,6 @@ class _HomePageState extends State<HomePage>
   }
 
 // 통계 카드 위젯
-// _buildStatCard 함수 수정 - MaterialColor 매개변수 유지하고 내부에서 색상 처리
   Widget _buildStatCard(
       String title, String value, MaterialColor color, IconData icon) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;

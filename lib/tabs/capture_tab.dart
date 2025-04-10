@@ -1,8 +1,6 @@
 // lib/screens/tabs/capture_tab.dart
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
-import 'package:vocabulary_app/screens/purchase_screen.dart';
 import 'package:vocabulary_app/widgets/usage_indicator_widget.dart';
 
 class CaptureTab extends StatefulWidget {

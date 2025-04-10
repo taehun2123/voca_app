@@ -51,7 +51,7 @@ class _HomePageState extends State<HomePage>
   Map<String, List<WordEntry>> _dayCollections = {};
 
   late TabController _tabController;
-  int _previousTabIndex = 0; // 이전 탭 인덱스 저장용 변수 추가
+// 이전 탭 인덱스 저장용 변수 추가
   bool _hasShownProcessingWarning = false; // 경고 메시지 표시 여부 추적
 
   @override
@@ -59,7 +59,42 @@ class _HomePageState extends State<HomePage>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _tabController = TabController(length: 4, vsync: this);
-    _tabController.addListener(_handleTabChange);
+    _tabController.addListener(() {
+      // 변경 이벤트가 발생할 때마다 UI 업데이트
+      if (!mounted) return;
+
+      // 이미지 처리 중인 경우 탭 변경 제한 로직 (첫 번째 탭 제외)
+      if (_isProcessing && _tabController.index != 0) {
+        print('이미지 처리 중 탭 변경 시도 차단');
+
+        // 변경을 방지하고 원래 탭으로 되돌림 (지연 적용)
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _tabController.animateTo(0, duration: Duration.zero);
+
+          // 경고 메시지가 아직 표시되지 않았으면 표시
+          if (!_hasShownProcessingWarning) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: const Text('이미지 처리 중에는 탭을 변경할 수 없습니다.'),
+                behavior: SnackBarBehavior.floating,
+                duration: Duration(seconds: 2),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+            );
+            // 메시지 표시 상태 업데이트
+            _hasShownProcessingWarning = true;
+          }
+        });
+      } else {
+        // 탭이 변경되면 UI 강제 업데이트
+        setState(() {
+          // 현재 선택된 탭 인덱스는 _tabController.index로 접근
+          // 별도 변수 필요 없음
+        });
+      }
+    });
     _storageService.validateStorage();
     print('홈 화면 초기화 - 저장된 단어 로드 시작');
     _loadSavedWords();
@@ -109,7 +144,6 @@ class _HomePageState extends State<HomePage>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _tabController.removeListener(_handleTabChange);
     _tabController.dispose();
     _ttsService.dispose();
     super.dispose();
@@ -142,49 +176,6 @@ class _HomePageState extends State<HomePage>
       _loadRemainingUsages();
     });
   }
-
-// 탭 변경 핸들러
-// TabController 리스너 함수 수정
-void _handleTabChange() {
-  // animationIndex를 통해 스와이프 완료 여부를 확인
-  if (_tabController.indexIsChanging) {
-    print('탭 변경 시작: ${_tabController.previousIndex} -> ${_tabController.index}');
-    
-    // 이미지 처리 중인 경우 탭 변경 방지 (첫 번째 탭 제외)
-    if (_isProcessing && _tabController.index != 0) {
-      print('이미지 처리 중 탭 변경 시도 차단');
-      
-      // 변경을 방지하고 원래 탭으로 되돌림
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        // 애니메이션 없이 이전 탭으로 즉시 돌아감
-        _tabController.index = 0; // 항상 첫 번째 탭으로 고정
-        
-        // 메시지를 아직 표시하지 않은 경우에만 표시
-        if (!_hasShownProcessingWarning) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: const Text('이미지 처리 중에는 탭을 변경할 수 없습니다.'),
-              behavior: SnackBarBehavior.floating,
-              duration: Duration(seconds: 2),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-            ),
-          );
-          // 메시지 표시 상태 업데이트
-          _hasShownProcessingWarning = true;
-        }
-      });
-    }
-  } else if (_tabController.animation!.value == _tabController.index.toDouble()) {
-    // 애니메이션이 완료되었을 때 (스와이프 완료 시점)
-    print('탭 변경 완료: ${_tabController.index}');
-    _previousTabIndex = _tabController.index;
-    
-    // UI 업데이트를 위해 setState 호출
-    setState(() {});
-  }
-}
 
   //단어 로딩 알고리즘
   Future<void> _loadSavedWords() async {
@@ -407,7 +398,6 @@ void _handleTabChange() {
       _totalImagesToProcess = _batchImages.length;
       _extractedWordsCount = 0;
       _tabController.index = 0;
-      _previousTabIndex = 0;
       _hasShownProcessingWarning = false; // 새 처리 작업 시작 시 경고 상태 초기화
     });
 

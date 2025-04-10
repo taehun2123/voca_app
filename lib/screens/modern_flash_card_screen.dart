@@ -1,4 +1,4 @@
-// 모던 디자인의 플래시카드 스크린
+// 모던 디자인의 플래시카드 스크린 (다크모드 개선)
 import 'package:flutter/material.dart';
 import 'package:vocabulary_app/model/word_entry.dart';
 import 'package:vocabulary_app/services/tts_service.dart';
@@ -73,9 +73,12 @@ class _ModernFlashCardScreenState extends State<ModernFlashCardScreen> {
   }
 
   void _showCompletionDialog() {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
+        backgroundColor: Theme.of(context).cardColor,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
         ),
@@ -87,12 +90,20 @@ class _ModernFlashCardScreenState extends State<ModernFlashCardScreen> {
               size: 48,
             ),
             SizedBox(height: 16),
-            Text('학습 완료!'),
+            Text(
+              '학습 완료!',
+              style: TextStyle(
+                color: Theme.of(context).textTheme.titleLarge?.color,
+              ),
+            ),
           ],
         ),
         content: Text(
           '모든 단어를 학습했습니다. 다시 시작하시겠습니까?',
           textAlign: TextAlign.center,
+          style: TextStyle(
+            color: Theme.of(context).textTheme.bodyMedium?.color,
+          ),
         ),
         actions: [
           TextButton(
@@ -100,6 +111,9 @@ class _ModernFlashCardScreenState extends State<ModernFlashCardScreen> {
               Navigator.of(context).pop();
             },
             child: Text('취소'),
+            style: TextButton.styleFrom(
+              foregroundColor: isDarkMode ? Colors.grey.shade300 : Colors.grey.shade700,
+            ),
           ),
           ElevatedButton(
             onPressed: () {
@@ -112,6 +126,8 @@ class _ModernFlashCardScreenState extends State<ModernFlashCardScreen> {
             },
             child: Text('다시 시작'),
             style: ElevatedButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.primary,
+              foregroundColor: Theme.of(context).colorScheme.onPrimary,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
@@ -123,8 +139,11 @@ class _ModernFlashCardScreenState extends State<ModernFlashCardScreen> {
   }
 
   void _showAccentMenu() {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    
     showModalBottomSheet(
       context: context,
+      backgroundColor: Theme.of(context).cardColor,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -139,6 +158,7 @@ class _ModernFlashCardScreenState extends State<ModernFlashCardScreen> {
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
+                  color: Theme.of(context).textTheme.titleLarge?.color,
                 ),
               ),
               SizedBox(height: 16),
@@ -221,11 +241,16 @@ class _ModernFlashCardScreenState extends State<ModernFlashCardScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    
     if (_shuffledWords.isEmpty) {
       return Center(
         child: Text(
           '학습할 단어가 없습니다.',
-          style: TextStyle(fontSize: 16, color: Colors.grey.shade600),
+          style: TextStyle(
+            fontSize: 16, 
+            color: isDarkMode ? Colors.grey.shade400 : Colors.grey.shade600
+          ),
         ),
       );
     }
@@ -245,7 +270,7 @@ class _ModernFlashCardScreenState extends State<ModernFlashCardScreen> {
                   '${_currentIndex + 1} / ${_shuffledWords.length}',
                   style: TextStyle(
                     fontSize: 14,
-                    color: Theme.of(context).brightness == Brightness.dark
+                    color: isDarkMode
                         ? Colors.grey.shade400 // 다크모드 텍스트 색상
                         : Colors.grey.shade700, // 라이트모드 텍스트 색상
                   ),
@@ -256,7 +281,7 @@ class _ModernFlashCardScreenState extends State<ModernFlashCardScreen> {
                       '발음: ',
                       style: TextStyle(
                         fontSize: 14,
-                        color: Theme.of(context).brightness == Brightness.dark
+                        color: isDarkMode
                             ? Colors.grey.shade400 // 다크모드 텍스트 색상
                             : Colors.grey.shade700, // 라이트모드 텍스트 색상
                       ),
@@ -267,7 +292,7 @@ class _ModernFlashCardScreenState extends State<ModernFlashCardScreen> {
                         padding:
                             EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
-                          color: Theme.of(context).brightness == Brightness.dark
+                          color: isDarkMode
                               ? Colors.blue.shade900.withOpacity(0.3) // 다크모드 배경
                               : Colors.blue.shade50, // 라이트모드 배경
                           borderRadius: BorderRadius.circular(12),
@@ -281,8 +306,7 @@ class _ModernFlashCardScreenState extends State<ModernFlashCardScreen> {
                                       ? '영국식'
                                       : '호주식',
                               style: TextStyle(
-                                color: Theme.of(context).brightness ==
-                                        Brightness.dark
+                                color: isDarkMode
                                     ? Colors.blue.shade300 // 다크모드 텍스트 색상
                                     : Colors.blue.shade700, // 라이트모드 텍스트 색상
                                 fontWeight: FontWeight.w500,
@@ -291,8 +315,7 @@ class _ModernFlashCardScreenState extends State<ModernFlashCardScreen> {
                             Icon(
                               Icons.keyboard_arrow_down,
                               size: 16,
-                              color: Theme.of(context).brightness ==
-                                      Brightness.dark
+                              color: isDarkMode
                                   ? Colors.blue.shade300 // 다크모드 아이콘 색상
                                   : Colors.blue.shade700, // 라이트모드 아이콘 색상
                             ),
@@ -310,10 +333,10 @@ class _ModernFlashCardScreenState extends State<ModernFlashCardScreen> {
               borderRadius: BorderRadius.circular(4),
               child: LinearProgressIndicator(
                 value: (_currentIndex + 1) / _shuffledWords.length,
-                backgroundColor: Theme.of(context).brightness == Brightness.dark
+                backgroundColor: isDarkMode
                     ? Colors.grey.shade800 // 다크모드 배경
                     : Colors.grey.shade200, // 라이트모드 배경
-                color: Theme.of(context).brightness == Brightness.dark
+                color: isDarkMode
                     ? Colors.blue.shade300 // 다크모드 진행 색상
                     : Colors.blue, // 라이트모드 진행 색상
                 minHeight: 6,
@@ -337,9 +360,9 @@ class _ModernFlashCardScreenState extends State<ModernFlashCardScreen> {
               borderRadius: BorderRadius.circular(24),
               boxShadow: [
                 BoxShadow(
-                  color: Theme.of(context)
-                      .shadowColor
-                      .withOpacity(0.1), // 테마 그림자 색상
+                  color: isDarkMode
+                      ? Colors.black38
+                      : Theme.of(context).shadowColor.withOpacity(0.1),
                   blurRadius: 10,
                   offset: Offset(0, 5),
                 ),
@@ -371,7 +394,7 @@ class _ModernFlashCardScreenState extends State<ModernFlashCardScreen> {
                       style: TextStyle(
                         fontSize: 18,
                         fontStyle: FontStyle.italic,
-                        color: Theme.of(context).brightness == Brightness.dark
+                        color: isDarkMode
                             ? Colors.grey.shade400
                             : Colors.grey[700],
                       ),
@@ -386,15 +409,14 @@ class _ModernFlashCardScreenState extends State<ModernFlashCardScreen> {
                       child: Container(
                         padding: EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: Theme.of(context).brightness == Brightness.dark
+                          color: isDarkMode
                               ? Colors.blue.shade900.withOpacity(0.3)
                               : Colors.blue.shade50,
                           shape: BoxShape.circle,
                           boxShadow: [
                             BoxShadow(
-                              color: Theme.of(context).brightness ==
-                                      Brightness.dark
-                                  ? Colors.blue.shade900.withOpacity(0.3)
+                              color: isDarkMode
+                                  ? Colors.black26
                                   : Colors.blue.shade100,
                               blurRadius: 5,
                               offset: Offset(0, 2),
@@ -403,7 +425,7 @@ class _ModernFlashCardScreenState extends State<ModernFlashCardScreen> {
                         ),
                         child: Icon(
                           Icons.volume_up,
-                          color: Theme.of(context).brightness == Brightness.dark
+                          color: isDarkMode
                               ? Colors.blue.shade300
                               : Colors.blue,
                           size: 28,
@@ -418,7 +440,7 @@ class _ModernFlashCardScreenState extends State<ModernFlashCardScreen> {
                       Container(
                         width: double.infinity,
                         height: 1,
-                        color: Theme.of(context).brightness == Brightness.dark
+                        color: isDarkMode
                             ? Colors.grey.shade800
                             : Colors.grey.shade200,
                         margin: EdgeInsets.symmetric(vertical: 20),
@@ -426,7 +448,7 @@ class _ModernFlashCardScreenState extends State<ModernFlashCardScreen> {
                       Container(
                         padding: EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: Theme.of(context).brightness == Brightness.dark
+                          color: isDarkMode
                               ? Colors.blue.shade900.withOpacity(0.3)
                               : Colors.blue.shade50,
                           borderRadius: BorderRadius.circular(16),
@@ -435,8 +457,7 @@ class _ModernFlashCardScreenState extends State<ModernFlashCardScreen> {
                           word.meaning,
                           style: TextStyle(
                             fontSize: 20,
-                            color:
-                                Theme.of(context).brightness == Brightness.dark
+                            color: isDarkMode
                                     ? Colors.blue.shade100
                                     : Colors.blue.shade900,
                           ),
@@ -448,8 +469,7 @@ class _ModernFlashCardScreenState extends State<ModernFlashCardScreen> {
                         Container(
                           padding: EdgeInsets.all(16),
                           decoration: BoxDecoration(
-                            color:
-                                Theme.of(context).brightness == Brightness.dark
+                            color: isDarkMode
                                     ? Colors.grey.shade800
                                     : Colors.grey.shade100,
                             borderRadius: BorderRadius.circular(16),
@@ -461,10 +481,9 @@ class _ModernFlashCardScreenState extends State<ModernFlashCardScreen> {
                                 children: [
                                   Icon(
                                     Icons.format_quote,
-                                    color: Theme.of(context).brightness ==
-                                            Brightness.dark
-                                        ? Colors.grey.shade400
-                                        : Colors.grey.shade700,
+                                    color: isDarkMode
+                                            ? Colors.grey.shade400
+                                            : Colors.grey.shade700,
                                     size: 16,
                                   ),
                                   SizedBox(width: 4),
@@ -472,10 +491,9 @@ class _ModernFlashCardScreenState extends State<ModernFlashCardScreen> {
                                     '예문',
                                     style: TextStyle(
                                       fontWeight: FontWeight.bold,
-                                      color: Theme.of(context).brightness ==
-                                              Brightness.dark
-                                          ? Colors.grey.shade300
-                                          : Colors.grey.shade700,
+                                      color: isDarkMode
+                                              ? Colors.grey.shade300
+                                              : Colors.grey.shade700,
                                     ),
                                   ),
                                   Spacer(),
@@ -487,10 +505,9 @@ class _ModernFlashCardScreenState extends State<ModernFlashCardScreen> {
                                     ),
                                     child: Icon(
                                       Icons.volume_up,
-                                      color: Theme.of(context).brightness ==
-                                              Brightness.dark
-                                          ? Colors.grey.shade400
-                                          : Colors.grey.shade700,
+                                      color: isDarkMode
+                                              ? Colors.grey.shade400
+                                              : Colors.grey.shade700,
                                       size: 16,
                                     ),
                                   ),
@@ -502,10 +519,9 @@ class _ModernFlashCardScreenState extends State<ModernFlashCardScreen> {
                                 style: TextStyle(
                                   fontSize: 16,
                                   fontStyle: FontStyle.italic,
-                                  color: Theme.of(context).brightness ==
-                                          Brightness.dark
-                                      ? Colors.grey.shade300
-                                      : Colors.grey.shade800,
+                                  color: isDarkMode
+                                          ? Colors.grey.shade300
+                                          : Colors.grey.shade800,
                                 ),
                               ),
                             ],
@@ -515,15 +531,15 @@ class _ModernFlashCardScreenState extends State<ModernFlashCardScreen> {
                       Container(
                         padding: EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: Theme.of(context).brightness == Brightness.dark
+                          color: isDarkMode
                               ? Colors.grey.shade800.withOpacity(0.5)
                               : Colors.grey.shade50,
                           borderRadius: BorderRadius.circular(16),
                           border: Border.all(
-                            color:
-                                Theme.of(context).brightness == Brightness.dark
+                            color: isDarkMode
                                     ? Colors.grey.shade700
                                     : Colors.grey.shade200,
+                            width: 1,
                           ),
                         ),
                         child: Row(
@@ -531,8 +547,7 @@ class _ModernFlashCardScreenState extends State<ModernFlashCardScreen> {
                           children: [
                             Icon(
                               Icons.touch_app,
-                              color: Theme.of(context).brightness ==
-                                      Brightness.dark
+                              color: isDarkMode
                                   ? Colors.grey.shade500
                                   : Colors.grey.shade400,
                               size: 16,
@@ -541,10 +556,9 @@ class _ModernFlashCardScreenState extends State<ModernFlashCardScreen> {
                             Text(
                               '탭하여 의미 보기',
                               style: TextStyle(
-                                color: Theme.of(context).brightness ==
-                                        Brightness.dark
-                                    ? Colors.grey.shade500
-                                    : Colors.grey.shade500,
+                                color: isDarkMode
+                                        ? Colors.grey.shade500
+                                        : Colors.grey.shade500,
                                 fontSize: 14,
                               ),
                             ),
@@ -569,10 +583,10 @@ class _ModernFlashCardScreenState extends State<ModernFlashCardScreen> {
               icon: Icon(Icons.arrow_back),
               label: Text('이전'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: Theme.of(context).brightness == Brightness.dark
+                backgroundColor: isDarkMode
                     ? Colors.grey.shade800 // 다크모드 배경색
                     : Colors.grey.shade200, // 라이트모드 배경색
-                foregroundColor: Theme.of(context).brightness == Brightness.dark
+                foregroundColor: isDarkMode
                     ? Colors.grey.shade200 // 다크모드 텍스트/아이콘 색상
                     : Colors.black87, // 라이트모드 텍스트/아이콘 색상
                 elevation: 0,
@@ -580,12 +594,10 @@ class _ModernFlashCardScreenState extends State<ModernFlashCardScreen> {
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
-                disabledBackgroundColor:
-                    Theme.of(context).brightness == Brightness.dark
+                disabledBackgroundColor: isDarkMode
                         ? Colors.grey.shade900 // 다크모드 비활성화 배경색
                         : Colors.grey.shade100, // 라이트모드 비활성화 배경색
-                disabledForegroundColor:
-                    Theme.of(context).brightness == Brightness.dark
+                disabledForegroundColor: isDarkMode
                         ? Colors.grey.shade700 // 다크모드 비활성화 텍스트/아이콘 색상
                         : Colors.grey.shade400, // 라이트모드 비활성화 텍스트/아이콘 색상
               ),
@@ -595,7 +607,7 @@ class _ModernFlashCardScreenState extends State<ModernFlashCardScreen> {
               icon: Icon(Icons.arrow_forward),
               label: Text('다음'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: Theme.of(context).brightness == Brightness.dark
+                backgroundColor: isDarkMode
                     ? Colors.blue.shade800 // 다크모드 배경색
                     : Colors.blue, // 라이트모드 배경색
                 foregroundColor: Colors.white, // 텍스트/아이콘 색상 (모든 모드에서 흰색)

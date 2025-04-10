@@ -2,7 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:vocabulary_app/model/word_entry.dart';
 import 'package:vocabulary_app/services/tts_service.dart';
-import 'package:vocabulary_app/widgets/modern_flash_card_screen.dart';
+import 'package:vocabulary_app/screens/modern_flash_card_screen.dart';
 
 class FlashCardTab extends StatefulWidget {
   final List<WordEntry> words;

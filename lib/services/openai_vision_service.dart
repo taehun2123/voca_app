@@ -6,11 +6,9 @@ import 'package:http/http.dart' as http;
 import '../model/word_entry.dart';
 import '../utils/api_key_utils.dart';
 import '../utils/constants.dart';
-import '../services/purchase_service.dart';
 
 class OpenAIVisionService {
   final String _apiUrl = 'https://api.openai.com/v1/chat/completions';
-  final PurchaseService _purchaseService = PurchaseService();
 
   // 이미지 파일에서 단어 추출 (사용량 체크 추가)
   Future<List<WordEntry>> extractWordsFromImage(File imageFile) async {

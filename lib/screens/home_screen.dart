@@ -71,15 +71,9 @@ class _HomePageState extends State<HomePage>
 
   Future<void> _initializeOpenAI() async {
     try {
-      print('OpenAI 서비스 초기화 시작');
-
       // Remote Config 서비스에서 API 키 직접 가져오기
       final remoteConfigService = RemoteConfigService();
       final apiKey = remoteConfigService.getApiKey();
-
-      // apiKey 값 로깅 (개발 중에만 사용, 실제 배포 시 제거 필요)
-      print(
-          'Remote Config에서 가져온 API 키 상태: ${apiKey.isEmpty ? "비어 있음" : "설정됨"}');
 
       if (apiKey.isNotEmpty) {
         // API 키가 있으면 서비스 초기화
@@ -91,7 +85,6 @@ class _HomePageState extends State<HomePage>
         setState(() {
           _openAIService = null;
         });
-        print('API 키가 비어 있어 OpenAI 서비스를 초기화할 수 없습니다');
       }
     } catch (e) {
       print('OpenAI 서비스 초기화 중 오류: $e');
@@ -156,7 +149,6 @@ class _HomePageState extends State<HomePage>
     // 탭이 실제로 변경될 때만 처리 (인덱스가 변경된 경우만)
     if (_tabController.indexIsChanging ||
         _tabController.index != _previousTabIndex) {
-      print('탭 변경 감지: ${_previousTabIndex} -> ${_tabController.index}');
 
       // 이미지 처리 중인 경우 탭 변경 방지
       if (_isProcessing) {
@@ -171,7 +163,7 @@ class _HomePageState extends State<HomePage>
           if (!_hasShownProcessingWarning) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text('이미지 처리 중에는 탭을 변경할 수 없습니다.'),
+                content: const Text('이미지 처리 중에는 탭을 변경할 수 없습니다.'),
                 behavior: SnackBarBehavior.floating,
                 duration: Duration(seconds: 2),
                 shape: RoundedRectangleBorder(

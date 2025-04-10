@@ -1,6 +1,5 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:vocabulary_app/screens/purchase_screen.dart';
 import 'package:vocabulary_app/screens/word_edit_screen.dart';
@@ -11,14 +10,11 @@ import 'package:vocabulary_app/tabs/capture_tab.dart';
 import 'package:vocabulary_app/tabs/flash_card_tab.dart';
 import 'package:vocabulary_app/tabs/quiz_tab.dart';
 import 'package:vocabulary_app/tabs/word_list_tab.dart';
-import 'package:vocabulary_app/widgets/modern_flash_card_screen.dart';
-import 'package:vocabulary_app/widgets/modern_quiz_card_screen.dart';
-import 'package:vocabulary_app/widgets/usage_indicator_widget.dart';
+import 'package:vocabulary_app/widgets/dialogs/admin_login_dialog.dart';
 import '../model/word_entry.dart';
 import '../services/openai_vision_service.dart';
 import '../services/storage_service.dart';
 import '../services/tts_service.dart';
-import '../widgets/word_card_widget.dart';
 import 'package:provider/provider.dart';
 import '../theme/theme_provider.dart';
 import 'package:vocabulary_app/screens/admin_screen.dart'; // 관리자 화면
@@ -71,18 +67,6 @@ class _HomePageState extends State<HomePage>
     _loadRemainingUsages();
   }
 
-  // 사용량 로드 함수 추가
-  Future<void> _loadRemainingUsages() async {
-    try {
-      final usages = await _purchaseService.getRemainingUsages();
-      setState(() {
-        _remainingUsages = usages;
-      });
-    } catch (e) {
-      print('사용량 로드 오류: $e');
-    }
-  }
-
   Future<void> _initializeOpenAI() async {
     try {
       print('OpenAI 서비스 초기화 시작');
@@ -112,6 +96,18 @@ class _HomePageState extends State<HomePage>
       setState(() {
         _openAIService = null;
       });
+    }
+  }
+
+  // 사용량 로드 함수 추가
+  Future<void> _loadRemainingUsages() async {
+    try {
+      final usages = await _purchaseService.getRemainingUsages();
+      setState(() {
+        _remainingUsages = usages;
+      });
+    } catch (e) {
+      print('사용량 로드 오류: $e');
     }
   }
 
@@ -1239,24 +1235,6 @@ class _HomePageState extends State<HomePage>
     }
   }
 
-  // 암기 상태 업데이트
-  Future<void> _updateMemorizedStatus(
-      String day, String wordText, bool isMemorized) async {
-    await _storageService.updateMemorizedStatus(wordText, isMemorized);
-
-    setState(() {
-      // 단어장 목록에서 업데이트
-      final wordList = _dayCollections[day];
-      if (wordList != null) {
-        final index = wordList.indexWhere((w) => w.word == wordText);
-        if (index >= 0) {
-          _dayCollections[day]![index] =
-              wordList[index].copyWith(isMemorized: isMemorized);
-        }
-      }
-    });
-  }
-
   // 현재 단어장 변경
   void _setCurrentDay(String dayName) {
     setState(() {
@@ -1267,14 +1245,6 @@ class _HomePageState extends State<HomePage>
   // 복습 횟수 증가
   Future<void> _incrementReviewCount(String wordText) async {
     await _storageService.incrementReviewCount(wordText);
-  }
-
-  // 관리자 화면으로 이동
-  void _navigateToAdminScreen() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => AdminScreen()),
-    );
   }
 
   // 0번 탭으로 이동
@@ -1295,104 +1265,6 @@ class _HomePageState extends State<HomePage>
       allWords.addAll(words);
     }
     return allWords;
-  }
-
-  // home_screen.dart에 추가할 _deleteDay 메서드 구현
-
-// 단어장 삭제
-  Future<void> _deleteDay(String dayName) async {
-    // "기타" 단어장은 day가 null인 단어들의 모음
-    final bool isNullDayCollection = dayName == '기타';
-
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-        ),
-        title: Row(
-          children: [
-            Icon(Icons.warning_amber_rounded, color: Colors.red.shade700),
-            SizedBox(width: 8),
-            Text('단어장 삭제'),
-          ],
-        ),
-        content: Text(
-            '$dayName 단어장을 삭제하시겠습니까?\n이 작업은 되돌릴 수 없으며, 해당 단어장의 모든 단어가 삭제됩니다.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: Text('취소'),
-          ),
-          TextButton(
-            style: TextButton.styleFrom(
-              backgroundColor: Colors.red.shade50,
-              foregroundColor: Colors.red,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-            onPressed: () => Navigator.of(context).pop(true),
-            child: Text('삭제'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed == true) {
-      try {
-        // 단어장 삭제 전 해당 단어장의 단어 수 확인
-        final wordsCount = _dayCollections[dayName]?.length ?? 0;
-
-        if (isNullDayCollection) {
-          // "기타" 단어장 처리 (day가 null인 단어들 삭제)
-          await _storageService.deleteNullDayWords();
-        } else {
-          // 일반 단어장 삭제 처리
-          await _storageService.deleteDay(dayName);
-        }
-
-        // 상태 업데이트
-        setState(() {
-          _dayCollections.remove(dayName);
-
-          // 다른 단어장으로 이동
-          if (_dayCollections.isEmpty) {
-            _currentDay = 'DAY 1'; // 기본값 설정
-          } else {
-            _currentDay = _dayCollections.keys.first;
-          }
-        });
-
-        // 저장소 상태 확인
-        await _storageService.validateStorage();
-
-        // 데이터 다시 로드
-        await _loadSavedWords();
-
-        // 완료 메시지
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('$dayName 단어장이 삭제되었습니다. ($wordsCount개 단어 함께 삭제)'),
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
-          ),
-        );
-      } catch (e) {
-        print('단어장 삭제 중 오류 (UI): $e');
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('단어장 삭제 중 오류가 발생했습니다: $e'),
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
-          ),
-        );
-      }
-    }
   }
 
   @override
@@ -1570,483 +1442,16 @@ class _HomePageState extends State<HomePage>
     );
   }
 
-  // 관리자 로그인 다이얼로그 표시 함수
+// 관리자 로그인 다이얼로그 표시 함수
   void _showAdminLogin() {
-    final TextEditingController passwordController = TextEditingController();
-    final RemoteConfigService remoteConfigService = RemoteConfigService();
-
-    showDialog(
+    showAdminLoginDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-        ),
-        title: Text('관리자 인증'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text('관리자 모드에 접근하려면 비밀번호를 입력하세요.'),
-            SizedBox(height: 16),
-            TextField(
-              controller: passwordController,
-              decoration: InputDecoration(
-                labelText: '비밀번호',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              obscureText: true,
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: Text('취소'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              if (remoteConfigService
-                  .verifyAdminPassword(passwordController.text)) {
-                Navigator.of(context).pop();
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => AdminScreen()),
-                );
-              } else {
-                // 비밀번호 불일치
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('비밀번호가 일치하지 않습니다.'),
-                    behavior: SnackBarBehavior.floating,
-                  ),
-                );
-              }
-              // 항상 컨트롤러 비우기
-              passwordController.clear();
-            },
-            child: Text('로그인'),
-            style: ElevatedButton.styleFrom(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-          ),
-        ],
-      ),
-    ).then((_) {
-      // 다이얼로그 닫힐 때 컨트롤러 정리
-      passwordController.dispose();
-    });
+      onSuccess: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => AdminScreen()),
+        );
+      },
+    );
   }
-
-// // 플래시카드 탭 UI - 모던한 디자인으로 수정
-//   Widget _buildFlashCardTab() {
-//     if (_dayCollections.isEmpty) {
-//       return Center(
-//         child: Column(
-//           mainAxisAlignment: MainAxisAlignment.center,
-//           children: [
-//             Icon(
-//               Icons.style,
-//               size: 80,
-//               color: Colors.grey.shade300,
-//             ),
-//             SizedBox(height: 24),
-//             Text(
-//               '단어장이 없습니다',
-//               style: TextStyle(
-//                 fontSize: 18,
-//                 fontWeight: FontWeight.bold,
-//                 color: Colors.grey.shade700,
-//               ),
-//             ),
-//             SizedBox(height: 8),
-//             Text(
-//               '먼저 단어를 추가해주세요',
-//               style: TextStyle(
-//                 fontSize: 14,
-//                 color: Colors.grey.shade600,
-//               ),
-//             ),
-//             SizedBox(height: 24),
-//             ElevatedButton.icon(
-//               onPressed: () {
-//                 _tabController.animateTo(0); // 단어 추가 탭으로 이동
-//               },
-//               icon: Icon(Icons.add_photo_alternate),
-//               label: Text('단어 추가하기'),
-//               style: ElevatedButton.styleFrom(
-//                 shape: RoundedRectangleBorder(
-//                   borderRadius: BorderRadius.circular(12),
-//                 ),
-//                 padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-//               ),
-//             ),
-//           ],
-//         ),
-//       );
-//     }
-
-//     // 단어장 선택 영역 추가
-//     return Column(
-//       children: [
-//         Container(
-//           padding: const EdgeInsets.all(16),
-//           decoration: BoxDecoration(
-//             color: Theme.of(context).cardColor, // 테마에 맞는 배경 색상
-//             boxShadow: [
-//               BoxShadow(
-//                 color: Theme.of(context)
-//                     .shadowColor
-//                     .withOpacity(0.1), // 테마에 맞는 그림자 색상
-//                 offset: Offset(0, 2),
-//                 blurRadius: 4,
-//               ),
-//             ],
-//           ),
-//           child: Column(
-//             crossAxisAlignment: CrossAxisAlignment.start,
-//             children: [
-//               Text(
-//                 '플래시카드 학습',
-//                 style: TextStyle(
-//                   fontSize: 14,
-//                   fontWeight: FontWeight.w600,
-//                   color: Theme.of(context).brightness == Brightness.dark
-//                       ? Colors.grey.shade300 // 다크모드 텍스트 색상
-//                       : Colors.grey.shade700, // 라이트모드 텍스트 색상
-//                 ),
-//               ),
-//               SizedBox(height: 12),
-//               Container(
-//                 padding: EdgeInsets.symmetric(horizontal: 16, vertical: 0),
-//                 decoration: BoxDecoration(
-//                   borderRadius: BorderRadius.circular(12),
-//                   border: Border.all(
-//                     color: Theme.of(context).brightness == Brightness.dark
-//                         ? Colors.grey.shade700 // 다크모드 테두리 색상
-//                         : Colors.grey.shade300, // 라이트모드 테두리 색상
-//                   ),
-//                   color: Theme.of(context).cardColor, // 테마에 맞는 배경 색상
-//                 ),
-//                 child: DropdownButtonHideUnderline(
-//                   child: DropdownButton<String>(
-//                     isExpanded: true,
-//                     value: _dayCollections.keys.contains(_currentDay)
-//                         ? _currentDay
-//                         : _dayCollections.keys.first,
-//                     items: _dayCollections.keys.map((String day) {
-//                       final count = _dayCollections[day]?.length ?? 0;
-//                       return DropdownMenuItem<String>(
-//                         value: day,
-//                         child: Row(
-//                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
-//                           children: [
-//                             Text(
-//                               day,
-//                               style: TextStyle(
-//                                 color: Theme.of(context)
-//                                     .textTheme
-//                                     .bodyLarge
-//                                     ?.color,
-//                               ),
-//                             ),
-//                             Container(
-//                               padding: EdgeInsets.symmetric(
-//                                   horizontal: 8, vertical: 4),
-//                               decoration: BoxDecoration(
-//                                 color: Theme.of(context).brightness ==
-//                                         Brightness.dark
-//                                     ? Colors.green.shade900
-//                                         .withOpacity(0.3) // 다크모드 배경
-//                                     : Colors.green.shade50, // 라이트모드 배경
-//                                 borderRadius: BorderRadius.circular(16),
-//                               ),
-//                               child: Text(
-//                                 '$count단어',
-//                                 style: TextStyle(
-//                                   fontSize: 12,
-//                                   color: Theme.of(context).brightness ==
-//                                           Brightness.dark
-//                                       ? Colors.green.shade300 // 다크모드 텍스트 색상
-//                                       : Colors.green.shade700, // 라이트모드 텍스트 색상
-//                                 ),
-//                               ),
-//                             ),
-//                           ],
-//                         ),
-//                       );
-//                     }).toList(),
-//                     onChanged: (String? newValue) {
-//                       if (newValue != null) {
-//                         setState(() {
-//                           _currentDay = newValue;
-//                         });
-//                       }
-//                     },
-//                     icon: Icon(
-//                       Icons.keyboard_arrow_down,
-//                       color: Theme.of(context).iconTheme.color, // 테마에 맞는 아이콘 색상
-//                     ),
-//                     style: TextStyle(
-//                       color: Theme.of(context)
-//                           .textTheme
-//                           .bodyLarge
-//                           ?.color, // 테마에 맞는 텍스트 색상
-//                       fontSize: 16,
-//                     ),
-//                     dropdownColor:
-//                         Theme.of(context).cardColor, // 드롭다운 배경색을 테마에 맞게 설정
-//                   ),
-//                 ),
-//               ),
-//             ],
-//           ),
-//         ),
-
-//         // 단어 개수 정보 표시 (선택된 단어장에 단어가 없는 경우 처리)
-//         if (_dayCollections[_currentDay]?.isEmpty ?? true)
-//           Expanded(
-//             child: Center(
-//               child: Column(
-//                 mainAxisAlignment: MainAxisAlignment.center,
-//                 children: [
-//                   Icon(
-//                     Icons.note_add,
-//                     size: 60,
-//                     color: Colors.grey.shade300,
-//                   ),
-//                   SizedBox(height: 16),
-//                   Text(
-//                     '$_currentDay에 저장된 단어가 없습니다.',
-//                     style: TextStyle(color: Colors.grey.shade600),
-//                   ),
-//                   SizedBox(height: 16),
-//                   ElevatedButton(
-//                     onPressed: () {
-//                       _tabController.animateTo(0); // 단어 추가 탭으로 이동
-//                     },
-//                     child: Text('단어 추가하기'),
-//                     style: ElevatedButton.styleFrom(
-//                       shape: RoundedRectangleBorder(
-//                         borderRadius: BorderRadius.circular(12),
-//                       ),
-//                     ),
-//                   ),
-//                 ],
-//               ),
-//             ),
-//           )
-//         else
-//           // 플래시카드 화면
-//           Expanded(
-//             child: ModernFlashCardScreen(
-//               words: _dayCollections[_currentDay] ?? [],
-//               onSpeakWord: _speakWord,
-//               onReviewComplete: (String wordText) async {
-//                 await _storageService.incrementReviewCount(wordText);
-//                 // 상태 업데이트는 필요하면 여기서 처리
-//               },
-//             ),
-//           ),
-//       ],
-//     );
-//   }
-
-// // 퀴즈 탭 UI - 모던한 디자인으로 수정
-//   Widget _buildQuizTab() {
-//     if (_dayCollections.isEmpty) {
-//       return Center(
-//         child: Column(
-//           mainAxisAlignment: MainAxisAlignment.center,
-//           children: [
-//             Icon(
-//               Icons.quiz,
-//               size: 80,
-//               color: Colors.grey.shade300,
-//             ),
-//             SizedBox(height: 24),
-//             Text(
-//               '단어장이 없습니다',
-//               style: TextStyle(
-//                 fontSize: 18,
-//                 fontWeight: FontWeight.bold,
-//                 color: Colors.grey.shade700,
-//               ),
-//             ),
-//             SizedBox(height: 8),
-//             Text(
-//               '먼저 단어를 추가해주세요',
-//               style: TextStyle(
-//                 fontSize: 14,
-//                 color: Colors.grey.shade600,
-//               ),
-//             ),
-//             SizedBox(height: 24),
-//             ElevatedButton.icon(
-//               onPressed: () {
-//                 _tabController.animateTo(0); // 단어 추가 탭으로 이동
-//               },
-//               icon: Icon(Icons.add_photo_alternate),
-//               label: Text('단어 추가하기'),
-//               style: ElevatedButton.styleFrom(
-//                 shape: RoundedRectangleBorder(
-//                   borderRadius: BorderRadius.circular(12),
-//                 ),
-//                 padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-//               ),
-//             ),
-//           ],
-//         ),
-//       );
-//     }
-
-// // 단어장 선택 영역 추가
-//     return Column(
-//       children: [
-//         Container(
-//           padding: const EdgeInsets.all(16),
-//           decoration: BoxDecoration(
-//             color: Theme.of(context).cardColor, // 테마 배경색 적용
-//             boxShadow: [
-//               BoxShadow(
-//                 color: Theme.of(context)
-//                     .shadowColor
-//                     .withOpacity(0.1), // 테마 그림자색 적용
-//                 offset: Offset(0, 2),
-//                 blurRadius: 4,
-//               ),
-//             ],
-//           ),
-//           child: Column(
-//             crossAxisAlignment: CrossAxisAlignment.start,
-//             children: [
-//               Text(
-//                 '퀴즈 모드',
-//                 style: TextStyle(
-//                   fontSize: 14,
-//                   fontWeight: FontWeight.w600,
-//                   color: Theme.of(context).brightness == Brightness.dark
-//                       ? Colors.grey.shade300 // 다크모드 텍스트 색상
-//                       : Colors.grey.shade700, // 라이트모드 텍스트 색상
-//                 ),
-//               ),
-//               SizedBox(height: 12),
-//               Row(
-//                 children: [
-//                   Expanded(
-//                     child: Container(
-//                       padding:
-//                           EdgeInsets.symmetric(horizontal: 16, vertical: 0),
-//                       decoration: BoxDecoration(
-//                         borderRadius: BorderRadius.circular(12),
-//                         border: Border.all(
-//                           color: Theme.of(context).brightness == Brightness.dark
-//                               ? Colors.grey.shade700 // 다크모드 테두리
-//                               : Colors.grey.shade300, // 라이트모드 테두리
-//                         ),
-//                         // 드롭다운 배경색도 테마 적용
-//                         color: Theme.of(context).cardColor,
-//                       ),
-//                       child: DropdownButtonHideUnderline(
-//                         child: DropdownButton<String>(
-//                           isExpanded: true,
-//                           value: _dayCollections.keys.contains(_currentDay)
-//                               ? _currentDay
-//                               : (_dayCollections.keys.isNotEmpty
-//                                   ? _dayCollections.keys.first
-//                                   : null),
-//                           items: _dayCollections.keys.map((String day) {
-//                             final count = _dayCollections[day]?.length ?? 0;
-//                             print('드롭다운 항목: $day ($count단어)'); // 디버깅용
-//                             return DropdownMenuItem<String>(
-//                               value: day,
-//                               child: Row(
-//                                 mainAxisAlignment:
-//                                     MainAxisAlignment.spaceBetween,
-//                                 children: [
-//                                   Text(
-//                                     day,
-//                                     style: TextStyle(
-//                                       color: Theme.of(context)
-//                                           .textTheme
-//                                           .bodyLarge
-//                                           ?.color, // 테마 텍스트 색상
-//                                     ),
-//                                   ),
-//                                   Container(
-//                                     padding: EdgeInsets.symmetric(
-//                                         horizontal: 8, vertical: 4),
-//                                     decoration: BoxDecoration(
-//                                       color: Theme.of(context).brightness ==
-//                                               Brightness.dark
-//                                           ? Colors.blue.shade900
-//                                               .withOpacity(0.3) // 다크모드 배지 배경
-//                                           : Colors.blue.shade50, // 라이트모드 배지 배경
-//                                       borderRadius: BorderRadius.circular(16),
-//                                     ),
-//                                     child: Text(
-//                                       '$count단어',
-//                                       style: TextStyle(
-//                                         fontSize: 12,
-//                                         color: Theme.of(context).brightness ==
-//                                                 Brightness.dark
-//                                             ? Colors
-//                                                 .blue.shade300 // 다크모드 배지 텍스트
-//                                             : Colors
-//                                                 .blue.shade700, // 라이트모드 배지 텍스트
-//                                       ),
-//                                     ),
-//                                   ),
-//                                 ],
-//                               ),
-//                             );
-//                           }).toList(),
-//                           onChanged: (String? newValue) {
-//                             if (newValue != null) {
-//                               setState(() {
-//                                 _currentDay = newValue;
-//                                 print(
-//                                     '선택된 DAY 변경: $_currentDay (${_dayCollections[_currentDay]?.length ?? 0}단어)');
-//                               });
-//                             }
-//                           },
-//                           icon: Icon(
-//                             Icons.keyboard_arrow_down,
-//                             color:
-//                                 Theme.of(context).iconTheme.color, // 테마 아이콘 색상
-//                           ),
-//                           style: TextStyle(
-//                             color: Theme.of(context)
-//                                 .textTheme
-//                                 .bodyLarge
-//                                 ?.color, // 테마 텍스트 색상
-//                             fontSize: 16,
-//                           ),
-//                           dropdownColor:
-//                               Theme.of(context).cardColor, // 드롭다운 메뉴 배경색 테마 적용
-//                         ),
-//                       ),
-//                     ),
-//                   ),
-//                 ],
-//               ),
-//             ],
-//           ),
-//         ),
-//         // 퀴즈 내용
-//         Expanded(
-//           child: ModernQuizScreen(
-//             words: _dayCollections[_currentDay] ?? [],
-//             allWords: _dayCollections.values.fold<List<WordEntry>>(
-//               [],
-//               (list, words) => list..addAll(words),
-//             ),
-//             onSpeakWord: _speakWord,
-//           ),
-//         ),
-//       ],
-//     );
-//   }
 }

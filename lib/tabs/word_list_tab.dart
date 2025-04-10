@@ -5,6 +5,9 @@ import 'package:vocabulary_app/model/word_entry.dart';
 import 'package:vocabulary_app/screens/word_edit_screen.dart';
 import 'package:vocabulary_app/services/storage_service.dart';
 import 'package:vocabulary_app/services/tts_service.dart';
+import 'package:vocabulary_app/widgets/dialogs/day_selection_bottom_sheet.dart';
+import 'package:vocabulary_app/widgets/dialogs/delete_day_dialog.dart';
+import 'package:vocabulary_app/widgets/dialogs/new_day_dialog.dart';
 import 'package:vocabulary_app/widgets/word_card_widget.dart';
 
 class WordListTab extends StatefulWidget {
@@ -243,459 +246,93 @@ class _WordListTabState extends State<WordListTab> {
   }
 
   // 단어장 선택 바텀시트
-  void _showDaySelectionBottomSheet() {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setState) {
-          return Container(
-            height: MediaQuery.of(context).size.height * 0.7,
-            decoration: BoxDecoration(
-              color: Theme.of(context).cardColor,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
-                  blurRadius: 10,
-                  offset: Offset(0, -2),
-                ),
-              ],
-            ),
-            child: Column(
-              children: [
-                // 핸들바
-                Container(
-                  margin: EdgeInsets.only(top: 12),
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).brightness == Brightness.dark
-                        ? Colors.grey.shade600
-                        : Colors.grey.shade300,
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                ),
-                Padding(
-                  padding: EdgeInsets.all(20),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        '단어장 선택',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Theme.of(context).textTheme.titleLarge?.color,
-                        ),
-                      ),
-                      IconButton(
-                        icon: Icon(Icons.add_circle_outline),
-                        onPressed: () {
-                          Navigator.pop(context);
-                          _showNewDayDialog();
-                        },
-                        tooltip: '새 단어장',
-                        color: Theme.of(context).brightness == Brightness.dark
-                            ? Colors.blue.shade300
-                            : Colors.blue,
-                      ),
-                    ],
-                  ),
-                ),
-                Divider(),
-                Expanded(
-                  child: ListView.builder(
-                    itemCount: _dayCollections.length,
-                    padding: EdgeInsets.symmetric(vertical: 8),
-                    itemBuilder: (context, index) {
-                      final day = _dayCollections.keys.elementAt(index);
-                      final isSelected = day == _currentDay;
-                      final count = _dayCollections[day]?.length ?? 0;
+void _showDaySelectionBottomSheet() {
+  showDaySelectionBottomSheet(
+    context: context,
+    dayCollections: _dayCollections,
+    currentDay: _currentDay,
+    onDaySelected: _updateCurrentDay,
+    onEditDayWords: _navigateToEditDayWords,
+    onCreateNewDay: _showNewDayDialog,
+  );
+}
 
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 20, vertical: 4),
-                        child: Material(
-                          color: Colors.transparent,
-                          child: InkWell(
-                            onTap: () {
-                              setState(() {
-                                // 바텀시트 내부 상태 변경
-                              });
+// 새 단어장 다이얼로그 표시
+void _showNewDayDialog() async {
+  // 다음 DAY 번호 계산
+  int nextDayNum = _calculateNextDayNumber();
 
-                              // 현재 단어장 변경
-                              _updateCurrentDay(day);
-                              Navigator.pop(context);
-                            },
-                            borderRadius: BorderRadius.circular(16),
-                            child: Container(
-                              padding: EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 12),
-                              decoration: BoxDecoration(
-                                color: isSelected
-                                    ? (Theme.of(context).brightness ==
-                                            Brightness.dark
-                                        ? Colors.blue.shade900.withOpacity(0.3)
-                                        : Colors.blue.shade50)
-                                    : Colors.transparent,
-                                borderRadius: BorderRadius.circular(16),
-                                border: Border.all(
-                                  color: isSelected
-                                      ? (Theme.of(context).brightness ==
-                                              Brightness.dark
-                                          ? Colors.blue.shade700
-                                          : Colors.blue.shade300)
-                                      : Colors.transparent,
-                                  width: 1.5,
-                                ),
-                              ),
-                              child: Row(
-                                children: [
-                                  // 체크 아이콘 (선택된 항목)
-                                  Container(
-                                    width: 24,
-                                    height: 24,
-                                    decoration: BoxDecoration(
-                                      color: isSelected
-                                          ? (Theme.of(context).brightness ==
-                                                  Brightness.dark
-                                              ? Colors.blue.shade800
-                                              : Colors.blue)
-                                          : (Theme.of(context).brightness ==
-                                                  Brightness.dark
-                                              ? Colors.grey.shade800
-                                              : Colors.grey.shade200),
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: isSelected
-                                        ? Icon(
-                                            Icons.check,
-                                            size: 16,
-                                            color: Colors.white,
-                                          )
-                                        : null,
-                                  ),
-                                  SizedBox(width: 16),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          day,
-                                          style: TextStyle(
-                                            fontSize: 16,
-                                            fontWeight: isSelected
-                                                ? FontWeight.bold
-                                                : FontWeight.normal,
-                                            color: isSelected
-                                                ? (Theme.of(context)
-                                                            .brightness ==
-                                                        Brightness.dark
-                                                    ? Colors.blue.shade300
-                                                    : Colors.blue.shade800)
-                                                : Theme.of(context)
-                                                    .textTheme
-                                                    .bodyLarge
-                                                    ?.color,
-                                          ),
-                                        ),
-                                        if (count > 0)
-                                          Text(
-                                            '${count}개 단어',
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              color: Theme.of(context)
-                                                          .brightness ==
-                                                      Brightness.dark
-                                                  ? Colors.grey.shade400
-                                                  : Colors.grey.shade700,
-                                            ),
-                                          ),
-                                      ],
-                                    ),
-                                  ),
-                                  Material(
-                                    color: Colors.transparent,
-                                    child: InkWell(
-                                      borderRadius: BorderRadius.circular(12),
-                                      onTap: () {
-                                        // 선택한 단어장으로 먼저 설정
-                                        _updateCurrentDay(day);
+  // 분리된 다이얼로그 사용
+  final newDayName = await showNewDayDialog(
+    context: context,
+    nextDayNum: nextDayNum,
+  );
 
-                                        // 바텀시트 닫기
-                                        Navigator.pop(context);
+  // 결과 처리
+  if (newDayName != null && newDayName.isNotEmpty) {
+    // 이미 존재하는 이름인지 확인
+    if (_dayCollections.containsKey(newDayName)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('이미 존재하는 단어장 이름입니다'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
 
-                                        // 선택한 단어장의 단어들을 편집 화면으로 전달
-                                        _navigateToEditDayWords(day);
-                                      },
-                                      child: Container(
-                                        padding: EdgeInsets.symmetric(
-                                            horizontal: 10, vertical: 4),
-                                        decoration: BoxDecoration(
-                                          color: Theme.of(context).brightness ==
-                                                  Brightness.dark
-                                              ? Colors.grey.shade800
-                                              : Colors.grey.shade200,
-                                          borderRadius:
-                                              BorderRadius.circular(12),
-                                        ),
-                                        child: Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Icon(
-                                              Icons.edit,
-                                              size: 14,
-                                              color: Theme.of(context)
-                                                          .brightness ==
-                                                      Brightness.dark
-                                                  ? Colors.grey.shade300
-                                                  : Colors.grey.shade700,
-                                            ),
-                                            SizedBox(width: 4),
-                                            Text(
-                                              '수정',
-                                              style: TextStyle(
-                                                fontSize: 12,
-                                                color: Theme.of(context)
-                                                            .brightness ==
-                                                        Brightness.dark
-                                                    ? Colors.grey.shade300
-                                                    : Colors.grey.shade700,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                                  )
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-              ],
-            ),
-          );
-        },
-      ),
-    );
+    // 새 단어장 생성
+    _createNewDayCollection(newDayName);
   }
+}
 
-  // 새 단어장 생성 다이얼로그
-  void _showNewDayDialog() {
-    // 다음 DAY 번호 계산 - 안전하게 수정
-    int nextDayNum = 1;
+// WordListTab 클래스 내부에 추가할 메서드
+int _calculateNextDayNumber() {
+  int nextDayNum = 1;
 
-    if (_dayCollections.isNotEmpty) {
-      try {
-        // 유효한 DAY 형식의 키만 필터링
-        List<int> validDayNumbers = [];
+  if (_dayCollections.isNotEmpty) {
+    try {
+      // 유효한 DAY 형식의 키만 필터링
+      List<int> validDayNumbers = [];
 
-        for (var day in _dayCollections.keys) {
-          // 정규식으로 "DAY " 다음에 오는 숫자 추출
-          final match = RegExp(r'DAY\s+(\d+)').firstMatch(day);
-          if (match != null && match.group(1) != null) {
-            validDayNumbers.add(int.parse(match.group(1)!));
-          }
+      for (var day in _dayCollections.keys) {
+        // 정규식으로 "DAY " 다음에 오는 숫자 추출
+        final match = RegExp(r'DAY\s+(\d+)').firstMatch(day);
+        if (match != null && match.group(1) != null) {
+          validDayNumbers.add(int.parse(match.group(1)!));
         }
-
-        if (validDayNumbers.isNotEmpty) {
-          // 가장 큰 DAY 번호 찾기
-          nextDayNum = validDayNumbers.reduce((a, b) => a > b ? a : b) + 1;
-        }
-      } catch (e) {
-        print('DAY 번호 계산 중 오류 발생: $e');
-        // 오류 발생 시 기본값 1 사용
-        nextDayNum = 1;
       }
-    }
 
-    final String suggestedDay = 'DAY $nextDayNum';
-    final TextEditingController controller =
-        TextEditingController(text: suggestedDay);
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: Theme.of(context).cardColor,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(24),
-        ),
-        title: Row(
-          children: [
-            Icon(
-              Icons.create_new_folder,
-              color: Theme.of(context).brightness == Brightness.dark
-                  ? Colors.green.shade300
-                  : Colors.green,
-              size: 24,
-            ),
-            SizedBox(width: 10),
-            Text(
-              '새 단어장 만들기',
-              style: TextStyle(
-                color: Theme.of(context).textTheme.titleLarge?.color,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              '새 단어장 이름을 입력하세요',
-              style: TextStyle(
-                color: Theme.of(context).textTheme.bodyMedium?.color,
-              ),
-            ),
-            SizedBox(height: 16),
-            TextField(
-              controller: controller,
-              style: TextStyle(
-                color: Theme.of(context).textTheme.bodyLarge?.color,
-              ),
-              decoration: InputDecoration(
-                hintText: '예: DAY 1',
-                hintStyle: TextStyle(
-                  color: Theme.of(context).brightness == Brightness.dark
-                      ? Colors.grey.shade600
-                      : Colors.grey.shade400,
-                ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  borderSide: BorderSide(
-                    color: Theme.of(context).dividerColor,
-                  ),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  borderSide: BorderSide(
-                    color: Theme.of(context).colorScheme.primary,
-                    width: 2,
-                  ),
-                ),
-                contentPadding:
-                    EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                fillColor: Theme.of(context).brightness == Brightness.dark
-                    ? Colors.grey.shade800.withOpacity(0.5)
-                    : Colors.white,
-                filled: true,
-                prefixIcon: Icon(Icons.folder_open),
-              ),
-              autofocus: true,
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(null),
-            child: Text('취소'),
-            style: TextButton.styleFrom(
-              foregroundColor: Theme.of(context).brightness == Brightness.dark
-                  ? Colors.grey.shade300
-                  : Colors.grey.shade700,
-              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            ),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              final newDayName = controller.text.trim();
-              if (newDayName.isEmpty) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('단어장 이름을 입력해주세요'),
-                    behavior: SnackBarBehavior.floating,
-                  ),
-                );
-                return;
-              }
-
-              // 이미 존재하는 이름인지 확인
-              if (_dayCollections.containsKey(newDayName)) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('이미 존재하는 단어장 이름입니다'),
-                    behavior: SnackBarBehavior.floating,
-                  ),
-                );
-                return;
-              }
-
-              // 새 단어장 생성
-              _createNewDayCollection(newDayName);
-              Navigator.of(context).pop();
-            },
-            child: Text('생성'),
-            style: ElevatedButton.styleFrom(
-              foregroundColor: Theme.of(context).colorScheme.onPrimary,
-              backgroundColor: Theme.of(context).brightness == Brightness.dark
-                  ? Colors.green.shade700
-                  : Colors.green,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              elevation: 0,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // 단어장 삭제 다이얼로그
-  Future<void> _showDeleteDayDialog(String dayName) async {
-    // "기타" 단어장은 day가 null인 단어들의 모음
-    final bool isNullDayCollection = dayName == '기타';
-
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-        ),
-        title: Row(
-          children: [
-            Icon(Icons.warning_amber_rounded, color: Colors.red.shade700),
-            SizedBox(width: 8),
-            Text('단어장 삭제'),
-          ],
-        ),
-        content: Text(
-            '$dayName 단어장을 삭제하시겠습니까?\n이 작업은 되돌릴 수 없으며, 해당 단어장의 모든 단어가 삭제됩니다.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: Text('취소'),
-          ),
-          TextButton(
-            style: TextButton.styleFrom(
-              backgroundColor: Colors.red.shade50,
-              foregroundColor: Colors.red,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-            onPressed: () => Navigator.of(context).pop(true),
-            child: Text('삭제'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed == true) {
-      await _deleteDayCollection(dayName, isNullDayCollection);
+      if (validDayNumbers.isNotEmpty) {
+        // 가장 큰 DAY 번호 찾기
+        nextDayNum = validDayNumbers.reduce((a, b) => a > b ? a : b) + 1;
+      }
+    } catch (e) {
+      print('DAY 번호 계산 중 오류 발생: $e');
+      // 오류 발생 시 기본값 1 사용
+      nextDayNum = 1;
     }
   }
+
+  return nextDayNum;
+}
+
+// 단어장 삭제 다이얼로그 표시
+Future<void> _showDeleteDayDialog(String dayName) async {
+  // "기타" 단어장은 day가 null인 단어들의 모음
+  final bool isNullDayCollection = dayName == '기타';
+
+  // 분리된 다이얼로그 사용
+  final confirmed = await showDeleteDayDialog(
+    context: context,
+    dayName: dayName,
+  );
+
+  if (confirmed) {
+    await _deleteDayCollection(dayName, isNullDayCollection);
+  }
+}
+
 
   // 통계 정보 표시
   Widget _buildStatistics() {

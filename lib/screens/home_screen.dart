@@ -109,7 +109,6 @@ class _HomePageState extends State<HomePage>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    // 탭 변경 리스너 제거
     _tabController.removeListener(_handleTabChange);
     _tabController.dispose();
     _ttsService.dispose();
@@ -145,42 +144,47 @@ class _HomePageState extends State<HomePage>
   }
 
 // 탭 변경 핸들러
-  void _handleTabChange() {
-    // 탭이 실제로 변경될 때만 처리 (인덱스가 변경된 경우만)
-    if (_tabController.indexIsChanging ||
-        _tabController.index != _previousTabIndex) {
-
-      // 이미지 처리 중인 경우 탭 변경 방지
-      if (_isProcessing) {
-        print('이미지 처리 중 탭 변경 시도 차단');
-
-        // 변경을 방지하고 원래 탭으로 되돌림
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          // 애니메이션 없이 이전 탭으로 즉시 돌아감
-          _tabController.index = 0; // 항상 첫 번째 탭으로 고정
-
-          // 메시지를 아직 표시하지 않은 경우에만 표시
-          if (!_hasShownProcessingWarning) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: const Text('이미지 처리 중에는 탭을 변경할 수 없습니다.'),
-                behavior: SnackBarBehavior.floating,
-                duration: Duration(seconds: 2),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
+// TabController 리스너 함수 수정
+void _handleTabChange() {
+  // animationIndex를 통해 스와이프 완료 여부를 확인
+  if (_tabController.indexIsChanging) {
+    print('탭 변경 시작: ${_tabController.previousIndex} -> ${_tabController.index}');
+    
+    // 이미지 처리 중인 경우 탭 변경 방지 (첫 번째 탭 제외)
+    if (_isProcessing && _tabController.index != 0) {
+      print('이미지 처리 중 탭 변경 시도 차단');
+      
+      // 변경을 방지하고 원래 탭으로 되돌림
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        // 애니메이션 없이 이전 탭으로 즉시 돌아감
+        _tabController.index = 0; // 항상 첫 번째 탭으로 고정
+        
+        // 메시지를 아직 표시하지 않은 경우에만 표시
+        if (!_hasShownProcessingWarning) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('이미지 처리 중에는 탭을 변경할 수 없습니다.'),
+              behavior: SnackBarBehavior.floating,
+              duration: Duration(seconds: 2),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
               ),
-            );
-            // 메시지 표시 상태 업데이트
-            _hasShownProcessingWarning = true;
-          }
-        });
-      } else {
-        // 처리 중이 아닌 경우 이전 탭 인덱스 업데이트
-        _previousTabIndex = _tabController.index;
-      }
+            ),
+          );
+          // 메시지 표시 상태 업데이트
+          _hasShownProcessingWarning = true;
+        }
+      });
     }
+  } else if (_tabController.animation!.value == _tabController.index.toDouble()) {
+    // 애니메이션이 완료되었을 때 (스와이프 완료 시점)
+    print('탭 변경 완료: ${_tabController.index}');
+    _previousTabIndex = _tabController.index;
+    
+    // UI 업데이트를 위해 setState 호출
+    setState(() {});
   }
+}
 
   //단어 로딩 알고리즘
   Future<void> _loadSavedWords() async {
@@ -828,17 +832,17 @@ class _HomePageState extends State<HomePage>
   }
 
 // 2. 단어장 선택 다이얼로그 수정 - 기존 단어장에 추가 옵션 제공
-Future<String?> _showDaySelectionDialog() async {
-  // 다음 DAY 번호 계산 함수 사용
-  int nextDayNum = calculateNextDayNumber(_dayCollections);
-  
-  // 분리된 다이얼로그 사용
-  return showDaySelectionDialog(
-    context: context, 
-    dayCollections: _dayCollections,
-    nextDayNum: nextDayNum,
-  );
-}
+  Future<String?> _showDaySelectionDialog() async {
+    // 다음 DAY 번호 계산 함수 사용
+    int nextDayNum = calculateNextDayNumber(_dayCollections);
+
+    // 분리된 다이얼로그 사용
+    return showDaySelectionDialog(
+      context: context,
+      dayCollections: _dayCollections,
+      nextDayNum: nextDayNum,
+    );
+  }
 
 // 단어가 다른 단어장에 존재하는지 확인하는 함수
   Future<Map<String, List<String>>> _checkWordExistsInOtherCollections(
@@ -872,13 +876,13 @@ Future<String?> _showDaySelectionDialog() async {
   }
 
 // 중복 단어가 있을 때 표시할 다이얼로그
-Future<bool> _showDuplicateWarningDialog(
-    Map<String, List<String>> duplicatesInOtherCollections) async {
-  return showDuplicateWarningDialog(
-    context: context, 
-    duplicatesInOtherCollections: duplicatesInOtherCollections,
-  );
-}
+  Future<bool> _showDuplicateWarningDialog(
+      Map<String, List<String>> duplicatesInOtherCollections) async {
+    return showDuplicateWarningDialog(
+      context: context,
+      duplicatesInOtherCollections: duplicatesInOtherCollections,
+    );
+  }
 
   // 단어 발음 듣기 (액센트 선택 기능 추가)
   Future<void> _speakWord(String word, {AccentType? accent}) async {
@@ -935,8 +939,13 @@ Future<bool> _showDuplicateWarningDialog(
     return allWords;
   }
 
+// lib/screens/home_screen.dart 파일의 Scaffold 부분 수정
+// TabBar 대신 BottomNavigationBar 사용
+
   @override
   Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
       appBar: AppBar(
         elevation: 0,
@@ -945,9 +954,7 @@ Future<bool> _showDuplicateWarningDialog(
         leading: IconButton(
           icon: Icon(
             Icons.shopping_cart,
-            color: Theme.of(context).brightness == Brightness.dark
-                ? Colors.amber.shade300
-                : Colors.amber.shade800,
+            color: isDarkMode ? Colors.amber.shade300 : Colors.amber.shade800,
           ),
           onPressed: () {
             // 인앱결제 화면으로 이동
@@ -983,9 +990,7 @@ Future<bool> _showDuplicateWarningDialog(
           child: Text(
             '찍어보카',
             style: TextStyle(
-              color: Theme.of(context).brightness == Brightness.dark
-                  ? Colors.white
-                  : Colors.black87,
+              color: isDarkMode ? Colors.white : Colors.black87,
               fontWeight: FontWeight.w600,
               fontSize: 20,
             ),
@@ -998,9 +1003,7 @@ Future<bool> _showDuplicateWarningDialog(
               Provider.of<ThemeProvider>(context).isDarkMode
                   ? Icons.light_mode
                   : Icons.dark_mode,
-              color: Theme.of(context).brightness == Brightness.dark
-                  ? Colors.amber.shade300
-                  : Colors.amber.shade800,
+              color: isDarkMode ? Colors.amber.shade300 : Colors.amber.shade800,
             ),
             onPressed: () {
               // 테마 전환
@@ -1009,51 +1012,15 @@ Future<bool> _showDuplicateWarningDialog(
             tooltip: '테마 변경',
           ),
         ],
-        bottom: TabBar(
-          controller: _tabController,
-          labelColor: Theme.of(context).tabBarTheme.labelColor,
-          unselectedLabelColor:
-              Theme.of(context).tabBarTheme.unselectedLabelColor,
-          indicatorColor: Theme.of(context).tabBarTheme.indicatorColor,
-          indicatorWeight: 3,
-          labelStyle: TextStyle(fontWeight: FontWeight.w600),
-          // 이미지 처리 중일 때 탭 비활성화 처리
-          onTap: (index) {
-            if (_isProcessing && index != 0) {
-              // 이미지 처리 중이고 첫 번째 탭이 아닌 다른 탭 선택 시
-              // 메시지를 아직 표시하지 않은 경우에만 표시
-              if (!_hasShownProcessingWarning) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('이미지 처리 중에는 탭을 변경할 수 없습니다.'),
-                    behavior: SnackBarBehavior.floating,
-                    duration: Duration(seconds: 2),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                );
-                // 메시지 표시 상태 업데이트
-                _hasShownProcessingWarning = true;
-              }
-              _tabController.index = 0;
-            }
-          },
-          tabs: const [
-            Tab(icon: Icon(Icons.camera_alt), text: '단어 추가'),
-            Tab(icon: Icon(Icons.book), text: '단어장'),
-            Tab(icon: Icon(Icons.quiz), text: '플래시카드'),
-            Tab(icon: Icon(Icons.games), text: '퀴즈'),
-          ],
-        ),
       ),
+      // 메인 컨텐츠 영역 - TabBarView 유지
       body: TabBarView(
         controller: _tabController,
         physics: _isProcessing
             ? NeverScrollableScrollPhysics() // 이미지 처리 중일 때 스와이프 비활성화
             : AlwaysScrollableScrollPhysics(), // 그 외에는 정상 작동
         children: [
-          // 첫 번째 탭: 이미지 캡처 및 처리
+          // 탭 내용은 동일하게 유지
           CaptureTab(
             onTakePhoto: _takePhoto,
             onPickImage: _pickImage,
@@ -1068,7 +1035,6 @@ Future<bool> _showDuplicateWarningDialog(
             showDetailedProgress: _showDetailedProgress,
           ),
 
-          // 두 번째 탭: 단어장
           WordListTab(
             dayCollections: _dayCollections,
             currentDay: _currentDay,
@@ -1084,7 +1050,6 @@ Future<bool> _showDuplicateWarningDialog(
             storageService: _storageService,
           ),
 
-          // 세 번째 탭: 플래시카드
           FlashCardTab(
             words: _dayCollections[_currentDay] ?? [],
             onSpeakWord: _speakWord,
@@ -1095,7 +1060,6 @@ Future<bool> _showDuplicateWarningDialog(
             navigateToCaptureTab: _navigateToCaptureTab,
           ),
 
-          // 네 번째 탭: 퀴즈
           QuizTab(
             words: _dayCollections[_currentDay] ?? [],
             allWords: _getAllWords(),
@@ -1106,6 +1070,70 @@ Future<bool> _showDuplicateWarningDialog(
             navigateToCaptureTab: _navigateToCaptureTab,
           ),
         ],
+      ),
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          color: isDarkMode ? Color(0xFF1E1E1E) : Colors.white,
+          boxShadow: const [
+            BoxShadow(
+              color: Colors.black12,
+              blurRadius: 4,
+              offset: Offset(0, -1),
+            ),
+          ],
+        ),
+        child: SafeArea(
+          child: BottomNavigationBar(
+            currentIndex: _tabController.index,
+            onTap: (index) {
+              if (_isProcessing && index != 0) {
+                // 이미지 처리 중이고 첫 번째 탭이 아닌 다른 탭 선택 시
+                if (!_hasShownProcessingWarning) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('이미지 처리 중에는 탭을 변경할 수 없습니다.'),
+                      behavior: SnackBarBehavior.floating,
+                      duration: Duration(seconds: 2),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  );
+                  _hasShownProcessingWarning = true;
+                }
+              } else {
+                _tabController.animateTo(index);
+              }
+            },
+            type: BottomNavigationBarType.fixed, // 4개 이상 항목이 있을 때 필요
+            backgroundColor: isDarkMode ? Color(0xFF1E1E1E) : Colors.white,
+            selectedItemColor: isDarkMode ? Colors.blue.shade300 : Colors.blue,
+            unselectedItemColor:
+                isDarkMode ? Colors.grey.shade600 : Colors.grey.shade700,
+            selectedLabelStyle:
+                TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+            unselectedLabelStyle: TextStyle(fontSize: 12),
+            elevation: 0, // 그림자는 위 Container에서 처리
+            items: const [
+              BottomNavigationBarItem(
+                icon: Icon(Icons.camera_alt),
+                label: '단어 추가',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.book),
+                label: '단어장',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.quiz),
+                label: '플래시카드',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.games),
+                label: '퀴즈',
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

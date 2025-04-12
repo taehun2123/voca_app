@@ -1,4 +1,3 @@
-// 모던 디자인의 퀴즈 스크린 (다크모드 개선)
 import 'package:flutter/material.dart';
 import 'package:vocabulary_app/model/word_entry.dart';
 import 'package:vocabulary_app/services/tts_service.dart';
@@ -178,8 +177,11 @@ class _ModernQuizScreenState extends State<ModernQuizScreen> {
   }
 
   void _showAccentMenu() {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
     showModalBottomSheet(
       context: context,
+      backgroundColor: Theme.of(context).cardColor,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -229,17 +231,17 @@ class _ModernQuizScreenState extends State<ModernQuizScreen> {
         decoration: BoxDecoration(
           color: _selectedAccent == accent
               ? (isDarkMode
-                  ? Colors.blue.shade900.withOpacity(0.5) // 다크모드 선택됨 배경색
-                  : Colors.blue.shade100) // 라이트모드 선택됨 배경색
+                  ? Colors.amber.shade900.withOpacity(0.5) // 다크모드 선택됨 배경색
+                  : Colors.amber.shade100) // 라이트모드 선택됨 배경색
               : (isDarkMode
-                  ? Colors.blue.shade900.withOpacity(0.3) // 다크모드 배경색
-                  : Colors.blue.shade50), // 라이트모드 배경색
+                  ? Colors.amber.shade900.withOpacity(0.3) // 다크모드 배경색
+                  : Colors.amber.shade50), // 라이트모드 배경색
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: _selectedAccent == accent
                 ? (isDarkMode
-                    ? Colors.blue.shade700 // 다크모드 선택됨 테두리
-                    : Colors.blue.shade300) // 라이트모드 선택됨 테두리
+                    ? Colors.amber.shade700 // 다크모드 선택됨 테두리
+                    : Colors.amber.shade300) // 라이트모드 선택됨 테두리
                 : Colors.transparent,
           ),
         ),
@@ -250,11 +252,11 @@ class _ModernQuizScreenState extends State<ModernQuizScreen> {
               Icons.volume_up,
               color: _selectedAccent == accent
                   ? (isDarkMode
-                      ? Colors.blue.shade300 // 다크모드 선택됨 아이콘
-                      : Colors.blue.shade800) // 라이트모드 선택됨 아이콘
+                      ? Colors.amber.shade300 // 다크모드 선택됨 아이콘
+                      : Colors.amber.shade800) // 라이트모드 선택됨 아이콘
                   : (isDarkMode
-                      ? Colors.blue.shade400 // 다크모드 아이콘
-                      : Colors.blue.shade700), // 라이트모드 아이콘
+                      ? Colors.amber.shade400 // 다크모드 아이콘
+                      : Colors.amber.shade700), // 라이트모드 아이콘
             ),
             const SizedBox(width: 8),
             Text(
@@ -262,11 +264,11 @@ class _ModernQuizScreenState extends State<ModernQuizScreen> {
               style: TextStyle(
                 color: _selectedAccent == accent
                     ? (isDarkMode
-                        ? Colors.blue.shade300 // 다크모드 선택됨 텍스트
-                        : Colors.blue.shade800) // 라이트모드 선택됨 텍스트
+                        ? Colors.amber.shade300 // 다크모드 선택됨 텍스트
+                        : Colors.amber.shade800) // 라이트모드 선택됨 텍스트
                     : (isDarkMode
-                        ? Colors.blue.shade400 // 다크모드 텍스트
-                        : Colors.blue.shade700), // 라이트모드 텍스트
+                        ? Colors.amber.shade400 // 다크모드 텍스트
+                        : Colors.amber.shade700), // 라이트모드 텍스트
                 fontWeight: _selectedAccent == accent
                     ? FontWeight.bold
                     : FontWeight.w500,
@@ -278,150 +280,515 @@ class _ModernQuizScreenState extends State<ModernQuizScreen> {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
+  // 빈 상태 UI
+  Widget _buildEmptyState() {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
-    if (!_isReady) {
-      return Center(
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          // 햄스터 이모지 사용
+          Text(
+            '🐹',
+            style: TextStyle(fontSize: 72),
+          ),
+          SizedBox(height: 24),
+          Text(
+            '퀴즈를 위해 최소 4개의 단어가 필요합니다.',
+            style: TextStyle(
+                fontSize: 16,
+                color:
+                    isDarkMode ? Colors.grey.shade400 : Colors.grey.shade600),
+            textAlign: TextAlign.center,
+          ),
+          SizedBox(height: 16),
+          ElevatedButton(
+            onPressed: () {
+              //_tabController.animateTo(0); // 단어 추가 탭으로 이동
+            },
+            child: Text('단어 추가하기'),
+            style: ElevatedButton.styleFrom(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              foregroundColor: Colors.white,
+              backgroundColor:
+                  isDarkMode ? Colors.amber.shade700 : Colors.amber.shade600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // 퀴즈 완료 화면
+  Widget _buildQuizCompleteScreen() {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
+    final successColor = _correctAnswers > (_totalAnswered / 2)
+        ? (isDarkMode ? Colors.amber.shade900 : Colors.amber.shade50)
+        : (isDarkMode ? Colors.orange.shade900 : Colors.orange.shade50);
+
+    final successIconColor = _correctAnswers > (_totalAnswered / 2)
+        ? (isDarkMode ? Colors.amber.shade300 : Colors.amber.shade600)
+        : (isDarkMode ? Colors.orange.shade300 : Colors.orange);
+
+    final successTextColor = _correctAnswers > (_totalAnswered / 2)
+        ? (isDarkMode ? Colors.amber.shade300 : Colors.amber.shade700)
+        : (isDarkMode ? Colors.orange.shade300 : Colors.orange.shade700);
+
+    return Center(
+      child: Container(
+        padding: EdgeInsets.all(24),
+        margin: EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: isDarkMode ? Colors.grey.shade800 : Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: isDarkMode ? Colors.black38 : Colors.grey.shade200,
+              blurRadius: 10,
+              offset: Offset(0, 5),
+            ),
+          ],
+          border: Border.all(
+            color: successColor,
+            width: 2,
+          ),
+        ),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              Icons.info_outline,
-              size: 60,
-              color: isDarkMode ? Colors.grey.shade600 : Colors.grey.shade400,
+            // 햄스터 이모지 사용
+            Container(
+              padding: EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: successColor,
+                shape: BoxShape.circle,
+              ),
+              child: Text(
+                '🐹',
+                style: TextStyle(fontSize: 32),
+              ),
             ),
             SizedBox(height: 24),
             Text(
-              '퀴즈를 위해 최소 4개의 단어가 필요합니다.',
+              '퀴즈 완료!',
               style: TextStyle(
-                fontSize: 16, 
-                color: isDarkMode ? Colors.grey.shade400 : Colors.grey.shade600
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: Theme.of(context).textTheme.titleLarge?.color,
               ),
-              textAlign: TextAlign.center,
             ),
-            SizedBox(height: 16),
+            SizedBox(height: 20),
+            Container(
+              padding: EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: successColor,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Column(
+                children: [
+                  Text(
+                    '$_correctAnswers / $_totalAnswered 정답',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: successTextColor,
+                    ),
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    '정답률: ${(_correctAnswers / _totalAnswered * 100).toStringAsFixed(1)}%',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: successTextColor,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(height: 40),
             ElevatedButton(
-              onPressed: () {
-                //_tabController.animateTo(0); // 단어 추가 탭으로 이동
-              },
-              child: Text('단어 추가하기'),
+              onPressed: _restartQuiz,
+              child: Text('다시 시작하기'),
               style: ElevatedButton.styleFrom(
+                padding: EdgeInsets.symmetric(horizontal: 30, vertical: 15),
+                backgroundColor:
+                    isDarkMode ? Colors.amber.shade700 : Colors.amber.shade600,
+                foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
-                backgroundColor: Theme.of(context).colorScheme.primary,
-                foregroundColor: Theme.of(context).colorScheme.onPrimary,
               ),
             ),
           ],
         ),
-      );
-    }
+      ),
+    );
+  }
 
-    // 퀴즈 완료
-    if (_currentIndex >= _quizWords.length) {
-      final successColor = _correctAnswers > (_totalAnswered / 2)
-          ? (isDarkMode ? Colors.green.shade800 : Colors.green.shade50)
-          : (isDarkMode ? Colors.orange.shade900 : Colors.orange.shade50);
-      
-      final successIconColor = _correctAnswers > (_totalAnswered / 2)
-          ? (isDarkMode ? Colors.green.shade300 : Colors.green)
-          : (isDarkMode ? Colors.orange.shade300 : Colors.orange);
-          
-      final successTextColor = _correctAnswers > (_totalAnswered / 2)
-          ? (isDarkMode ? Colors.green.shade300 : Colors.green.shade700)
-          : (isDarkMode ? Colors.orange.shade300 : Colors.orange.shade700);
+  // 문제 카드 UI
+  Widget _buildQuestionCard(
+      WordEntry currentWord, String questionTitle, String questionText) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
-      return Center(
-        child: Container(
-          padding: EdgeInsets.all(24),
-          margin: EdgeInsets.all(24),
+    return Container(
+      width: double.infinity,
+      margin: EdgeInsets.symmetric(vertical: 16),
+      padding: EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Theme.of(context).shadowColor.withOpacity(0.1),
+            blurRadius: 10,
+            offset: Offset(0, 5),
+          ),
+        ],
+        border: Border.all(
+          color: isDarkMode
+              ? Colors.amber.shade800.withOpacity(0.3)
+              : Colors.amber.shade200,
+          width: 1.5,
+        ),
+      ),
+      child: Column(
+        children: [
+          Text(
+            questionTitle,
+            style: TextStyle(
+              fontSize: 14,
+              color: isDarkMode ? Colors.grey.shade400 : Colors.grey.shade700,
+            ),
+          ),
+          SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Flexible(
+                child: Text(
+                  questionText,
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: Theme.of(context).textTheme.titleLarge?.color,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+              if (_quizMode == 0) // 단어->의미 모드에서만 발음 버튼 표시
+                IconButton(
+                  icon: Icon(
+                    Icons.volume_up,
+                    color: isDarkMode
+                        ? Colors.amber.shade300
+                        : Colors.amber.shade700,
+                  ),
+                  onPressed: () => widget.onSpeakWord(currentWord.word,
+                      accent: _selectedAccent),
+                  tooltip: '발음 듣기',
+                ),
+            ],
+          ),
+          if (_quizMode == 0 && currentWord.pronunciation.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 8.0),
+              child: InkWell(
+                onTap: _showAccentMenu,
+                child: Container(
+                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: isDarkMode
+                        ? Colors.amber.shade900.withOpacity(0.3)
+                        : Colors.amber.shade50,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        currentWord.pronunciation,
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontStyle: FontStyle.italic,
+                          color: isDarkMode
+                              ? Colors.amber.shade300
+                              : Colors.amber.shade800,
+                        ),
+                      ),
+                      SizedBox(width: 4),
+                      Icon(
+                        Icons.keyboard_arrow_down,
+                        size: 14,
+                        color: isDarkMode
+                            ? Colors.amber.shade300
+                            : Colors.amber.shade700,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  // 상단 정보 영역 UI
+  Widget _buildInfoHeader() {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        // 문제 번호 컨테이너
+        Container(
+          padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           decoration: BoxDecoration(
-            color: isDarkMode ? Colors.grey.shade800 : Colors.white,
-            borderRadius: BorderRadius.circular(24),
-            boxShadow: [
-              BoxShadow(
-                color: isDarkMode 
-                    ? Colors.black38 
-                    : Colors.grey.shade200,
-                blurRadius: 10,
-                offset: Offset(0, 5),
+            color: isDarkMode ? Colors.grey.shade800 : Colors.grey.shade100,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.format_list_numbered,
+                  size: 14,
+                  color:
+                      isDarkMode ? Colors.grey.shade300 : Colors.grey.shade700),
+              SizedBox(width: 4),
+              Text(
+                '${_currentIndex + 1} / ${_quizWords.length}',
+                style: TextStyle(
+                    fontSize: 14,
+                    color: isDarkMode
+                        ? Colors.grey.shade300
+                        : Colors.grey.shade700),
               ),
             ],
           ),
-          child: Column(
+        ),
+
+        // 정답 수 컨테이너
+        Container(
+          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          decoration: BoxDecoration(
+            color: isDarkMode
+                ? Colors.amber.shade900.withOpacity(0.3)
+                : Colors.amber.shade50,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Container(
-                padding: EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: successColor,
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  _correctAnswers > (_totalAnswered / 2)
-                      ? Icons.emoji_events
-                      : Icons.school,
-                  size: 50,
-                  color: successIconColor,
-                ),
-              ),
-              SizedBox(height: 24),
               Text(
-                '퀴즈 완료!',
+                '🐹', // 햄스터 이모지 사용
+                style: TextStyle(fontSize: 14),
+              ),
+              SizedBox(width: 8),
+              Text(
+                '정답: $_correctAnswers',
                 style: TextStyle(
-                  fontSize: 24, 
-                  fontWeight: FontWeight.bold,
-                  color: Theme.of(context).textTheme.titleLarge?.color,
-                ),
-              ),
-              SizedBox(height: 20),
-              Container(
-                padding: EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: successColor,
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Column(
-                  children: [
-                    Text(
-                      '$_correctAnswers / $_totalAnswered 정답',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: successTextColor,
-                      ),
-                    ),
-                    SizedBox(height: 8),
-                    Text(
-                      '정답률: ${(_correctAnswers / _totalAnswered * 100).toStringAsFixed(1)}%',
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: successTextColor,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              SizedBox(height: 40),
-              ElevatedButton(
-                onPressed: _restartQuiz,
-                child: Text('다시 시작하기'),
-                style: ElevatedButton.styleFrom(
-                  padding: EdgeInsets.symmetric(horizontal: 30, vertical: 15),
-                  backgroundColor: Theme.of(context).colorScheme.primary,
-                  foregroundColor: Theme.of(context).colorScheme.onPrimary,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+                  fontSize: 14,
+                  color: isDarkMode
+                      ? Colors.amber.shade300
+                      : Colors.amber.shade700,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
             ],
           ),
         ),
-      );
+
+        // 퀴즈 모드 토글 버튼
+        InkWell(
+          onTap: _toggleQuizMode,
+          child: Container(
+            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: isDarkMode
+                  ? Colors.amber.shade900.withOpacity(0.3)
+                  : Colors.amber.shade50,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Row(
+              children: [
+                Text(
+                  _quizMode == 0 ? '단어→의미' : '의미→단어',
+                  style: TextStyle(
+                    color: isDarkMode
+                        ? Colors.amber.shade300
+                        : Colors.amber.shade700,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                Icon(Icons.swap_horiz,
+                    size: 14,
+                    color: isDarkMode
+                        ? Colors.amber.shade300
+                        : Colors.amber.shade700),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // 보기 버튼 UI
+  Widget _buildOptionItem(String option, bool isCorrect, bool isSelected) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
+    return GestureDetector(
+      onTap: _showResult ? null : () => _checkAnswer(option),
+      child: Container(
+        margin: EdgeInsets.only(bottom: 12),
+        decoration: BoxDecoration(
+          color: _getOptionColor(isCorrect, isSelected),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: _getOptionBorderColor(isCorrect, isSelected),
+            width: 1.5,
+          ),
+        ),
+        child: ListTile(
+          contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          title: Text(
+            option,
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: isSelected || (isCorrect && _showResult)
+                  ? FontWeight.bold
+                  : FontWeight.normal,
+              color: isDarkMode
+                  ? (isSelected || (isCorrect && _showResult)
+                      ? Colors.white
+                      : Colors.grey.shade300)
+                  : (isSelected || (isCorrect && _showResult)
+                      ? Colors.black
+                      : Colors.black87),
+            ),
+          ),
+          trailing: _showResult
+              ? _buildResultIcon(isCorrect, isSelected)
+              : Container(
+                  width: 24,
+                  height: 24,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: isDarkMode
+                          ? Colors.grey.shade600
+                          : Colors.grey.shade400,
+                    ),
+                  ),
+                  child: null,
+                ),
+        ),
+      ),
+    );
+  }
+
+// 결과 아이콘 UI
+Widget _buildResultIcon(bool isCorrect, bool isSelected) {
+  final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
+  if (isCorrect) {
+    return Container(
+      padding: EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: isDarkMode
+            ? Colors.amber.shade900.withOpacity(0.3)
+            : Colors.amber.shade100,
+        shape: BoxShape.circle,
+      ),
+      child: Icon(
+        Icons.check,
+        color: isDarkMode ? Colors.amber.shade300 : Colors.amber.shade700,
+        size: 16,
+      ),
+    );
+  }
+
+  if (isSelected && !isCorrect) {
+    return Container(
+      padding: EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: isDarkMode
+            ? Colors.red.shade900.withOpacity(0.3)
+            : Colors.red.shade100,
+        shape: BoxShape.circle,
+      ),
+      child: Icon(
+        Icons.close,
+        color: isDarkMode ? Colors.red.shade300 : Colors.red,
+        size: 16,
+      ),
+    );
+  }
+
+  return SizedBox(width: 24);
+}
+
+Color _getOptionColor(bool isCorrect, bool isSelected) {
+  final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
+  if (!_showResult) {
+    return isSelected
+        ? (isDarkMode
+            ? Colors.amber.shade900.withOpacity(0.3)
+            : Colors.amber.shade50)
+        : Theme.of(context).cardColor;
+  }
+
+  if (isCorrect) {
+    return isDarkMode
+        ? Colors.amber.shade900.withOpacity(0.3)
+        : Colors.amber.shade50;
+  }
+
+  if (isSelected && !isCorrect) {
+    return isDarkMode
+        ? Colors.red.shade900.withOpacity(0.3)
+        : Colors.red.shade50;
+  }
+
+  return Theme.of(context).cardColor;
+}
+
+Color _getOptionBorderColor(bool isCorrect, bool isSelected) {
+  final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
+  if (!_showResult) {
+    return isSelected
+        ? (isDarkMode ? Colors.amber.shade700 : Colors.amber.shade300)
+        : (isDarkMode ? Colors.grey.shade700 : Colors.grey.shade300);
+  }
+
+  if (isCorrect) {
+    return isDarkMode ? Colors.amber.shade700 : Colors.amber.shade300;
+  }
+
+  if (isSelected && !isCorrect) {
+    return isDarkMode ? Colors.red.shade700 : Colors.red.shade300;
+  }
+
+  return isDarkMode ? Colors.grey.shade700 : Colors.grey.shade300;
+}
+
+  @override
+  Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
+    // 퀴즈 준비가 안된 경우
+    if (!_isReady) {
+      return _buildEmptyState();
+    }
+
+    // 퀴즈 완료
+    if (_currentIndex >= _quizWords.length) {
+      return _buildQuizCompleteScreen();
     }
 
     final currentWord = _quizWords[_currentIndex];
@@ -431,376 +798,55 @@ class _ModernQuizScreenState extends State<ModernQuizScreen> {
     final String questionTitle =
         _quizMode == 0 ? '다음 단어의 의미는?' : '다음 의미에 해당하는 단어는?';
 
+    final correctAnswer =
+        _quizMode == 0 ? currentWord.meaning : currentWord.word;
+
     return Padding(
       padding: const EdgeInsets.all(16.0),
       child: Column(children: [
         // 상단 정보 및 모드 전환 영역
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Container(
-              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: isDarkMode
-                    ? Colors.grey.shade800
-                    : Colors.grey.shade100,
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.format_list_numbered,
-                      size: 14,
-                      color: isDarkMode
-                          ? Colors.grey.shade300
-                          : Colors.grey.shade700),
-                  SizedBox(width: 4),
-                  Text(
-                    '${_currentIndex + 1} / ${_quizWords.length}',
-                    style: TextStyle(
-                        fontSize: 14,
-                        color: isDarkMode
-                            ? Colors.grey.shade300
-                            : Colors.grey.shade700),
-                  ),
-                ],
-              ),
-            ),
+        _buildInfoHeader(),
 
-// 정답 수 컨테이너
-            Container(
-              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              decoration: BoxDecoration(
-                color: isDarkMode
-                    ? Colors.green.shade900.withOpacity(0.3)
-                    : Colors.green.shade50,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.check_circle,
-                      color: isDarkMode
-                          ? Colors.green.shade300
-                          : Colors.green,
-                      size: 14),
-                  SizedBox(width: 8),
-                  Text(
-                    '정답: $_correctAnswers',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: isDarkMode
-                          ? Colors.green.shade300
-                          : Colors.green.shade700,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-              ),
-            ),
+        // 문제 카드
+        _buildQuestionCard(currentWord, questionTitle, questionText),
 
-// 퀴즈 모드 토글 버튼
-            Row(
-              children: [
-                InkWell(
-                  onTap: _toggleQuizMode,
-                  child: Container(
-                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: isDarkMode
-                          ? Colors.purple.shade900.withOpacity(0.3)
-                          : Colors.purple.shade50,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Row(
-                      children: [
-                        Text(
-                          _quizMode == 0 ? '단어→의미' : '의미→단어',
-                          style: TextStyle(
-                            color: isDarkMode
-                                    ? Colors.purple.shade300
-                                    : Colors.purple.shade700,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        Icon(Icons.swap_horiz,
-                            size: 14,
-                            color: isDarkMode
-                                    ? Colors.purple.shade300
-                                    : Colors.purple.shade700),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-// 문제 카드 부분 수정
-        Container(
-          width: double.infinity,
-          margin: EdgeInsets.symmetric(vertical: 16),
-          padding: EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Theme.of(context).cardColor, // 테마 카드 색상
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: [
-              BoxShadow(
-                color:
-                    Theme.of(context).shadowColor.withOpacity(0.1), // 테마 그림자 색상
-                blurRadius: 10,
-                offset: Offset(0, 5),
-              ),
-            ],
-          ),
-          child: Column(
-            children: [
-              Text(
-                questionTitle,
-                style: TextStyle(
-                  fontSize: 14,
-                  color: isDarkMode
-                      ? Colors.grey.shade400
-                      : Colors.grey.shade700,
-                ),
-              ),
-              SizedBox(height: 8),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Flexible(
-                    child: Text(
-                      questionText,
-                      style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                        color: Theme.of(context).textTheme.titleLarge?.color,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                  if (_quizMode == 0) // 단어->의미 모드에서만 발음 버튼 표시
-                    IconButton(
-                      icon: Icon(
-                        Icons.volume_up,
-                        color: isDarkMode
-                            ? Colors.blue.shade300
-                            : Colors.blue,
-                      ),
-                      onPressed: () => widget.onSpeakWord(currentWord.word,
-                          accent: _selectedAccent),
-                      tooltip: '발음 듣기',
-                    ),
-                ],
-              ),
-              if (_quizMode == 0 && currentWord.pronunciation.isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.only(top: 8.0),
-                  child: InkWell(
-                    onTap: _showAccentMenu,
-                    child: Container(
-                      padding:
-                          EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: isDarkMode
-                            ? Colors.blue.shade900.withOpacity(0.3)
-                            : Colors.blue.shade50,
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            currentWord.pronunciation,
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontStyle: FontStyle.italic,
-                              color: isDarkMode
-                                  ? Colors.blue.shade300
-                                  : Colors.blue.shade800,
-                            ),
-                          ),
-                          SizedBox(width: 4),
-                          Icon(
-                            Icons.keyboard_arrow_down,
-                            size: 14,
-                            color: isDarkMode
-                                    ? Colors.blue.shade300
-                                    : Colors.blue.shade700,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        ),
-
-// 보기 목록 수정
+        // 보기 목록
         Expanded(
           child: ListView.builder(
             itemCount: _options.length,
             padding: EdgeInsets.symmetric(vertical: 8),
             itemBuilder: (context, index) {
               final option = _options[index];
-              final correctAnswer =
-                  _quizMode == 0 ? currentWord.meaning : currentWord.word;
               bool isCorrect = option == correctAnswer;
               bool isSelected = option == _selectedOption;
 
-              return GestureDetector(
-                onTap: _showResult ? null : () => _checkAnswer(option),
-                child: Container(
-                  margin: EdgeInsets.only(bottom: 12),
-                  decoration: BoxDecoration(
-                    color: _getOptionColor(isCorrect, isSelected),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: _getOptionBorderColor(isCorrect, isSelected),
-                      width: 1.5,
-                    ),
-                  ),
-                  child: ListTile(
-                    contentPadding:
-                        EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                    title: Text(
-                      option,
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: isSelected || (isCorrect && _showResult)
-                            ? FontWeight.bold
-                            : FontWeight.normal,
-                        color: isDarkMode
-                            ? (isSelected || (isCorrect && _showResult)
-                                ? Colors.white
-                                : Colors.grey.shade300)
-                            : (isSelected || (isCorrect && _showResult)
-                                ? Colors.black
-                                : Colors.black87),
-                      ),
-                    ),
-                    trailing: _showResult
-                        ? _buildResultIcon(isCorrect, isSelected)
-                        : Container(
-                            width: 24,
-                            height: 24,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: isDarkMode
-                                        ? Colors.grey.shade600
-                                        : Colors.grey.shade400,
-                              ),
-                            ),
-                            child: null,
-                          ),
-                  ),
-                ),
-              );
+              return _buildOptionItem(option, isCorrect, isSelected);
             },
           ),
         ),
 
-// 하단 버튼
+        // 하단 버튼
         Padding(
-            padding: const EdgeInsets.only(top: 16.0),
-            child: _showResult
-                ? ElevatedButton(
-                    onPressed: _nextQuestion,
-                    child: Text('다음 문제'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Theme.of(context).colorScheme.primary,
-                      foregroundColor: Theme.of(context).colorScheme.onPrimary,
-                      padding:
-                          EdgeInsets.symmetric(horizontal: 30, vertical: 15),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      elevation: 0,
+          padding: const EdgeInsets.only(top: 16.0),
+          child: _showResult
+              ? ElevatedButton(
+                  onPressed: _nextQuestion,
+                  child: Text('다음 문제'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: isDarkMode
+                        ? Colors.amber.shade700
+                        : Colors.amber.shade600,
+                    foregroundColor: Colors.white,
+                    padding: EdgeInsets.symmetric(horizontal: 30, vertical: 15),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                  )
-                : null),
+                    elevation: 0,
+                  ),
+                )
+              : null,
+        ),
       ]),
     );
-  }
-
-  Color _getOptionColor(bool isCorrect, bool isSelected) {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-
-    if (!_showResult) {
-      return isSelected
-          ? (isDarkMode
-              ? Colors.blue.shade900.withOpacity(0.3)
-              : Colors.blue.shade50)
-          : Theme.of(context).cardColor;
-    }
-
-    if (isCorrect) {
-      return isDarkMode
-          ? Colors.green.shade900.withOpacity(0.3)
-          : Colors.green.shade50;
-    }
-
-    if (isSelected && !isCorrect) {
-      return isDarkMode
-          ? Colors.red.shade900.withOpacity(0.3)
-          : Colors.red.shade50;
-    }
-
-    return Theme.of(context).cardColor;
-  }
-
-  Color _getOptionBorderColor(bool isCorrect, bool isSelected) {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-
-    if (!_showResult) {
-      return isSelected
-          ? (isDarkMode ? Colors.blue.shade700 : Colors.blue.shade300)
-          : (isDarkMode ? Colors.grey.shade700 : Colors.grey.shade300);
-    }
-
-    if (isCorrect) {
-      return isDarkMode ? Colors.green.shade700 : Colors.green.shade300;
-    }
-
-    if (isSelected && !isCorrect) {
-      return isDarkMode ? Colors.red.shade700 : Colors.red.shade300;
-    }
-
-    return isDarkMode ? Colors.grey.shade700 : Colors.grey.shade300;
-  }
-
-  Widget _buildResultIcon(bool isCorrect, bool isSelected) {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-
-    if (isCorrect) {
-      return Container(
-        padding: EdgeInsets.all(4),
-        decoration: BoxDecoration(
-          color: isDarkMode
-              ? Colors.green.shade900.withOpacity(0.3)
-              : Colors.green.shade100,
-          shape: BoxShape.circle,
-        ),
-        child: Icon(Icons.check,
-            color: isDarkMode ? Colors.green.shade300 : Colors.green, size: 16),
-      );
-    }
-
-    if (isSelected && !isCorrect) {
-      return Container(
-        padding: EdgeInsets.all(4),
-        decoration: BoxDecoration(
-          color: isDarkMode
-              ? Colors.red.shade900.withOpacity(0.3)
-              : Colors.red.shade100,
-          shape: BoxShape.circle,
-        ),
-        child: Icon(Icons.close,
-            color: isDarkMode ? Colors.red.shade300 : Colors.red, size: 16),
-      );
-    }
-
-    return SizedBox(width: 24);
   }
 }

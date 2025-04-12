@@ -4,7 +4,7 @@ class AppThemes {
   // 라이트 모드 테마
   static ThemeData lightTheme = ThemeData(
     brightness: Brightness.light,
-    primarySwatch: Colors.green,
+    primarySwatch: Colors.amber, // 햄스터 색상과 어울리게 변경
     scaffoldBackgroundColor: Colors.white,
     fontFamily: 'Pretendard',
     appBarTheme: const AppBarTheme(
@@ -26,16 +26,16 @@ class AppThemes {
       ),
     ),
     tabBarTheme: TabBarTheme(
-      labelColor: Colors.blue,
+      labelColor: Colors.amber.shade700, // 햄스터 색상과 어울리게 변경
       unselectedLabelColor: Colors.grey.shade600,
-      indicatorColor: Colors.blue,
+      indicatorColor: Colors.amber.shade700, // 햄스터 색상과 어울리게 변경
       indicatorSize: TabBarIndicatorSize.tab,
     ),
     bottomAppBarTheme: BottomAppBarTheme(
       color: Colors.white,
     ),
     floatingActionButtonTheme: FloatingActionButtonThemeData(
-      backgroundColor: Colors.blue,
+      backgroundColor: Colors.lightBlue, // 배경색과 어울리게 변경
       foregroundColor: Colors.white,
     ),
     elevatedButtonTheme: ElevatedButtonThemeData(
@@ -43,6 +43,7 @@ class AppThemes {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
         ),
+        backgroundColor: Colors.lightBlue, // 배경색과 어울리게 변경
       ),
     ),
     outlinedButtonTheme: OutlinedButtonThemeData(
@@ -50,6 +51,7 @@ class AppThemes {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
         ),
+        foregroundColor: Colors.lightBlue, // 배경색과 어울리게 변경
       ),
     ),
     textButtonTheme: TextButtonThemeData(
@@ -57,6 +59,7 @@ class AppThemes {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
         ),
+        foregroundColor: Colors.lightBlue, // 배경색과 어울리게 변경
       ),
     ),
     inputDecorationTheme: InputDecorationTheme(
@@ -66,8 +69,8 @@ class AppThemes {
       contentPadding: EdgeInsets.symmetric(vertical: 12, horizontal: 16),
     ),
     colorScheme: ColorScheme.light(
-      primary: Colors.green,
-      secondary: Colors.blue,
+      primary: Colors.amber.shade600, // 햄스터 색상과 어울리게 변경
+      secondary: Colors.lightBlue, // 배경색과 어울리게 변경
       surface: Colors.white,
       background: Colors.grey.shade50,
       error: Colors.red,
@@ -85,7 +88,7 @@ class AppThemes {
   // 다크 모드 테마
   static ThemeData darkTheme = ThemeData(
     brightness: Brightness.dark,
-    primarySwatch: Colors.green,
+    primarySwatch: Colors.amber, // 햄스터 색상과 어울리게 변경
     scaffoldBackgroundColor: Color(0xFF121212), // 다크 모드 배경색
     fontFamily: 'Pretendard',
     appBarTheme: const AppBarTheme(
@@ -107,16 +110,16 @@ class AppThemes {
       ),
     ),
     tabBarTheme: TabBarTheme(
-      labelColor: Colors.lightBlue.shade300, // 다크 모드에서 더 밝은 파란색
+      labelColor: Colors.amber.shade300, // 햄스터 색상과 어울리게 변경
       unselectedLabelColor: Colors.grey.shade400,
-      indicatorColor: Colors.lightBlue.shade300,
+      indicatorColor: Colors.amber.shade300, // 햄스터 색상과 어울리게 변경
       indicatorSize: TabBarIndicatorSize.tab,
     ),
     bottomAppBarTheme: BottomAppBarTheme(
       color: Color(0xFF1E1E1E), // 다크 모드 하단 앱바 색상
     ),
     floatingActionButtonTheme: FloatingActionButtonThemeData(
-      backgroundColor: Colors.lightBlue.shade300,
+      backgroundColor: Colors.lightBlue.shade300, // 배경색과 어울리게 변경
       foregroundColor: Colors.black,
     ),
     elevatedButtonTheme: ElevatedButtonThemeData(
@@ -124,7 +127,7 @@ class AppThemes {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
         ),
-        backgroundColor: Colors.green.shade700, // 다크 모드 버튼 색상
+        backgroundColor: Colors.amber.shade700, // 햄스터 색상과 어울리게 변경
       ),
     ),
     outlinedButtonTheme: OutlinedButtonThemeData(
@@ -132,7 +135,7 @@ class AppThemes {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
         ),
-        side: BorderSide(color: Colors.green.shade100), // 다크 모드 버튼 테두리 색상
+        side: BorderSide(color: Colors.amber.shade100), // 햄스터 색상과 어울리게 변경
       ),
     ),
     textButtonTheme: TextButtonThemeData(
@@ -153,8 +156,8 @@ class AppThemes {
       filled: true,
     ),
     colorScheme: ColorScheme.dark(
-      primary: Colors.green.shade600,
-      secondary: Colors.lightBlue.shade300,
+      primary: Colors.amber.shade600, // 햄스터 색상과 어울리게 변경
+      secondary: Colors.lightBlue.shade300, // 배경색과 어울리게 변경
       surface: Color(0xFF2C2C2C),
       background: Color(0xFF121212),
       error: Colors.red.shade300,

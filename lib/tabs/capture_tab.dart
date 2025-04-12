@@ -1,4 +1,5 @@
-// lib/screens/tabs/capture_tab.dart
+// lib/tabs/capture_tab.dart 수정
+
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:vocabulary_app/widgets/usage_indicator_widget.dart';
@@ -38,6 +39,8 @@ class CaptureTab extends StatefulWidget {
 class _CaptureTabState extends State<CaptureTab> {
   @override
   Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    
     return Padding(
       padding: EdgeInsets.all(16.0),
       child: Column(
@@ -57,20 +60,26 @@ class _CaptureTabState extends State<CaptureTab> {
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: Colors.blue.shade50,
+                      color: isDarkMode 
+                          ? Colors.amber.shade900.withOpacity(0.3)
+                          : Colors.amber.shade50,
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.image, color: Colors.blue.shade700),
+                        Icon(Icons.image, color: isDarkMode 
+                            ? Colors.amber.shade300
+                            : Colors.amber.shade700),
                         SizedBox(width: 8),
                         Text(
                           '${widget.batchImages.length}장의 이미지가 선택됨',
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
-                            color: Colors.blue.shade700,
+                            color: isDarkMode
+                                ? Colors.amber.shade300
+                                : Colors.amber.shade700,
                           ),
                         ),
                       ],
@@ -138,6 +147,11 @@ class _CaptureTabState extends State<CaptureTab> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
+                    // 햄스터 이모지 또는 아이콘 추가
+                    Text(
+                      '🐹',
+                      style: TextStyle(fontSize: 72),
+                    ),
                     const SizedBox(height: 24),
                     const Text(
                       '교재나 단어장 이미지를 촬영하거나 갤러리에서 선택하세요',
@@ -155,13 +169,13 @@ class _CaptureTabState extends State<CaptureTab> {
                     Container(
                       decoration: BoxDecoration(
                         color: Theme.of(context).brightness == Brightness.dark
-                            ? Colors.green.shade900.withOpacity(0.3)
-                            : Colors.green.shade50,
+                            ? Colors.amber.shade900.withOpacity(0.3)
+                            : Colors.amber.shade50,
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(
                           color: Theme.of(context).brightness == Brightness.dark
-                              ? Colors.green.shade900.withOpacity(0.3)
-                              : Colors.green.shade50,
+                              ? Colors.amber.shade900.withOpacity(0.3)
+                              : Colors.amber.shade100,
                           width: 1,
                         ),
                       ),
@@ -173,16 +187,16 @@ class _CaptureTabState extends State<CaptureTab> {
                             decoration: BoxDecoration(
                               color: Theme.of(context).brightness ==
                                       Brightness.dark
-                                  ? Colors.green.shade700
-                                  : Colors.green.shade300,
+                                  ? Colors.amber.shade700
+                                  : Colors.amber.shade300,
                               shape: BoxShape.circle,
                             ),
                             child: Icon(
                               Icons.check_circle,
                               color: Theme.of(context).brightness ==
                                       Brightness.dark
-                                  ? Colors.green.shade300
-                                  : Colors.green,
+                                  ? Colors.amber.shade300
+                                  : Colors.amber.shade700,
                               size: 20,
                             ),
                           ),
@@ -193,8 +207,8 @@ class _CaptureTabState extends State<CaptureTab> {
                               fontWeight: FontWeight.bold,
                               color: Theme.of(context).brightness ==
                                       Brightness.dark
-                                  ? Colors.green.shade50
-                                  : Colors.green.shade900,
+                                  ? Colors.amber.shade100
+                                  : Colors.amber.shade900,
                             ),
                           ),
                         ],
@@ -208,7 +222,13 @@ class _CaptureTabState extends State<CaptureTab> {
             Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                CircularProgressIndicator(),
+                CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    Theme.of(context).brightness == Brightness.dark
+                        ? Colors.amber.shade300
+                        : Colors.amber.shade700,
+                  ),
+                ),
                 SizedBox(height: 16),
                 if (widget.showDetailedProgress) ...[
                   Text('이미지 처리 중: ${widget.processedImages} / ${widget.totalImagesToProcess}'),
@@ -216,7 +236,11 @@ class _CaptureTabState extends State<CaptureTab> {
                   LinearProgressIndicator(
                     value: widget.processedImages / widget.totalImagesToProcess,
                     backgroundColor: Colors.grey.shade200,
-                    color: Colors.blue,
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      Theme.of(context).brightness == Brightness.dark
+                          ? Colors.amber.shade300
+                          : Colors.amber.shade700,
+                    ),
                   ),
                   SizedBox(height: 16),
                   Text('추출된 단어: ${widget.extractedWordsCount}개'),
@@ -246,8 +270,8 @@ class _CaptureTabState extends State<CaptureTab> {
                             ),
                             backgroundColor:
                                 Theme.of(context).brightness == Brightness.dark
-                                    ? Colors.green.shade700 // 다크모드
-                                    : Colors.green.shade500, // 라이트모드
+                                    ? Colors.amber.shade700 // 다크모드
+                                    : Colors.amber.shade600, // 라이트모드
                             foregroundColor: Colors.white, // 텍스트는 항상 흰색으로
                             elevation: 0,
                           ),
@@ -266,8 +290,8 @@ class _CaptureTabState extends State<CaptureTab> {
                             ),
                             backgroundColor:
                                 Theme.of(context).brightness == Brightness.dark
-                                    ? Colors.blue.shade700 // 다크모드
-                                    : Colors.blue.shade500, // 라이트모드
+                                    ? Colors.lightBlue.shade700 // 다크모드
+                                    : Colors.lightBlue.shade500, // 라이트모드
                             foregroundColor: Colors.white, // 텍스트는 항상 흰색으로
                             elevation: 0,
                           ),

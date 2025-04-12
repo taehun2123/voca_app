@@ -224,17 +224,17 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
                         ),
                       ),
                       if (_remainingUsages <= 0) ...[
-                          const SizedBox(height: 24),
-                          Text(
-                            '무료로 충전하기',
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                              color: theme.textTheme.titleLarge?.color,
-                            ),
+                        const SizedBox(height: 24),
+                        Text(
+                          '무료로 충전하기',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: theme.textTheme.titleLarge?.color,
                           ),
-                          const SizedBox(height: 16),
-                          _buildWatchAdCard(),
+                        ),
+                        const SizedBox(height: 16),
+                        _buildWatchAdCard(),
                       ],
                       const SizedBox(height: 24),
                       // 구매 옵션 설명
@@ -318,7 +318,8 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
     );
   }
 
-  // 광고 시청 카드 위젯 추가
+  // lib/screens/purchase_screen.dart의 _buildWatchAdCard 메서드 수정
+
   Widget _buildWatchAdCard() {
     final theme = Theme.of(context);
     final isDarkMode = theme.brightness == Brightness.dark;
@@ -329,7 +330,7 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
         side: BorderSide(
-          color: isDarkMode ? Colors.purple.shade700 : Colors.purple.shade300,
+          color: isDarkMode ? Colors.amber.shade700 : Colors.amber.shade300,
         ),
       ),
       child: InkWell(
@@ -343,14 +344,13 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
                 padding: EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   color: isDarkMode
-                      ? Colors.purple.shade900.withOpacity(0.3)
-                      : Colors.purple.shade50,
+                      ? Colors.amber.shade900.withOpacity(0.3)
+                      : Colors.amber.shade50,
                   shape: BoxShape.circle,
                 ),
-                child: Icon(
-                  Icons.ondemand_video,
-                  color: isDarkMode ? Colors.purple.shade300 : Colors.purple,
-                  size: 24,
+                child: Text(
+                  '🐹', // 햄스터 이모지 사용
+                  style: TextStyle(fontSize: 20),
                 ),
               ),
               SizedBox(width: 16),
@@ -384,16 +384,16 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
                           Icons.add_circle_outline,
                           size: 14,
                           color: isDarkMode
-                              ? Colors.purple.shade300
-                              : Colors.purple,
+                              ? Colors.amber.shade300
+                              : Colors.amber.shade700,
                         ),
                         SizedBox(width: 4),
                         Text(
                           '+1회',
                           style: TextStyle(
                             color: isDarkMode
-                                ? Colors.purple.shade300
-                                : Colors.purple,
+                                ? Colors.amber.shade300
+                                : Colors.amber.shade700,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
@@ -406,8 +406,8 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
                 padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 decoration: BoxDecoration(
                   color: isDarkMode
-                      ? Colors.purple.shade900.withOpacity(0.5)
-                      : Colors.purple.shade100,
+                      ? Colors.amber.shade900.withOpacity(0.5)
+                      : Colors.amber.shade100,
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
@@ -415,8 +415,8 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                     color: isDarkMode
-                        ? Colors.purple.shade300
-                        : Colors.purple.shade800,
+                        ? Colors.amber.shade300
+                        : Colors.amber.shade800,
                   ),
                 ),
               ),

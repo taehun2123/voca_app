@@ -112,8 +112,8 @@ class _WordListTabState extends State<WordListTab> {
               ),
               padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               backgroundColor: Theme.of(context).brightness == Brightness.dark
-                  ? Colors.green.shade700 // 다크모드
-                  : Colors.green.shade500, // 라이트모드
+                  ? Colors.amber.shade700 // 다크모드
+                  : Colors.amber.shade500, // 라이트모드
               foregroundColor: Colors.white, // 텍스트는 항상 흰색으로
             ),
           ),
@@ -343,14 +343,14 @@ Future<void> _showDeleteDayDialog(String dayName) async {
           _buildStatCard(
             '총 단어',
             '${_dayCollections[_currentDay]?.length ?? 0}',
-            Colors.blue,
+            Colors.lightBlue,
             Icons.format_list_numbered,
           ),
           SizedBox(width: 12),
           _buildStatCard(
             '암기 완료',
             '${_dayCollections[_currentDay]?.where((w) => w.isMemorized).length ?? 0}',
-            Colors.green,
+            Colors.amber,
             Icons.check_circle,
           ),
         ],
@@ -447,8 +447,8 @@ Future<void> _showDeleteDayDialog(String dayName) async {
                 ),
                 padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 backgroundColor: Theme.of(context).brightness == Brightness.dark
-                    ? Colors.green.shade700 // 다크모드
-                    : Colors.green.shade500, // 라이트모드
+                    ? Colors.amber.shade700 // 다크모드
+                    : Colors.amber.shade500, // 라이트모드
                 foregroundColor: Colors.white, // 텍스트는 항상 흰색으로
                 elevation: 0,
               ),

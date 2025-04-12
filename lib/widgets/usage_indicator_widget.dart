@@ -1,4 +1,4 @@
-// lib/widgets/usage_indicator_widget.dart
+// lib/widgets/usage_indicator_widget.dart 수정
 
 import 'package:flutter/material.dart';
 import 'package:vocabulary_app/services/purchase_service.dart';
@@ -18,28 +18,43 @@ class UsageIndicatorWidget extends StatelessWidget {
     final theme = Theme.of(context);
     final isDarkMode = theme.brightness == Brightness.dark;
 
+    // 사용량에 따른 상태 설정
     Color statusColor;
     String statusText;
     IconData statusIcon;
+    Widget statusIndicator;
 
-    // 사용량에 따른 상태 설정
     if (remainingUsages <= 0) {
       statusColor = Colors.red;
       statusText = '사용량 부족';
       statusIcon = Icons.error_outline;
+      statusIndicator = Icon(
+        statusIcon,
+        color: statusColor,
+        size: 24,
+      );
     } else if (remainingUsages <= 3) {
       statusColor = Colors.orange;
       statusText = '부족';
       statusIcon = Icons.warning_amber_outlined;
+      statusIndicator = Icon(
+        statusIcon,
+        color: statusColor,
+        size: 24,
+      );
     } else {
-      statusColor = Colors.green;
+      statusColor = Colors.amber; // 햄스터 색상과 어울리게 변경
       statusText = '사용 가능';
       statusIcon = Icons.check_circle_outline;
+      statusIndicator = Text(
+        '🐹', // 부족하지 않을 때는 햄스터 이모지 사용
+        style: TextStyle(fontSize: 22),
+      );
     }
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
       decoration: BoxDecoration(
         color: isDarkMode
             ? statusColor.withOpacity(0.2)
@@ -49,14 +64,17 @@ class UsageIndicatorWidget extends StatelessWidget {
           color: statusColor.withOpacity(0.5),
           width: 1,
         ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 4,
+            offset: Offset(0, 2),
+          ),
+        ],
       ),
       child: Row(
         children: [
-          Icon(
-            statusIcon,
-            color: statusColor,
-            size: 24,
-          ),
+          statusIndicator,
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -94,7 +112,11 @@ class UsageIndicatorWidget extends StatelessWidget {
                 ElevatedButton(
                   onPressed: onBuyPressed,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: statusColor,
+                    backgroundColor: remainingUsages <= 0
+                        ? statusColor
+                        : (isDarkMode
+                            ? Colors.amber.shade700
+                            : Colors.amber.shade600),
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
@@ -110,10 +132,11 @@ class UsageIndicatorWidget extends StatelessWidget {
       ),
     );
   }
-    // 광고 시청 메서드 추가
+
+  // 광고 시청 메서드 추가
   Future<void> _watchAdForCredits(BuildContext context) async {
     final purchaseService = PurchaseService();
-    
+
     // 로딩 다이얼로그 표시
     showDialog(
       context: context,
@@ -122,13 +145,13 @@ class UsageIndicatorWidget extends StatelessWidget {
         child: CircularProgressIndicator(),
       ),
     );
-    
+
     try {
       final result = await purchaseService.addCreditByWatchingAd();
-      
+
       // 로딩 다이얼로그 닫기
       Navigator.of(context, rootNavigator: true).pop();
-      
+
       if (result) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -146,7 +169,7 @@ class UsageIndicatorWidget extends StatelessWidget {
     } catch (e) {
       // 로딩 다이얼로그 닫기
       Navigator.of(context, rootNavigator: true).pop();
-      
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('광고 처리 중 오류가 발생했습니다.'),

@@ -121,8 +121,8 @@ class _FlashCardTabState extends State<FlashCardTab> {
                           decoration: BoxDecoration(
                             color:
                                 Theme.of(context).brightness == Brightness.dark
-                                    ? Colors.green.shade900.withOpacity(0.3)
-                                    : Colors.green.shade50,
+                                    ? Colors.blue.shade900.withOpacity(0.3)
+                                    : Colors.blue.shade50,
                             borderRadius: BorderRadius.circular(16),
                           ),
                           child: Text(
@@ -131,8 +131,8 @@ class _FlashCardTabState extends State<FlashCardTab> {
                               fontSize: 12,
                               color: Theme.of(context).brightness ==
                                       Brightness.dark
-                                  ? Colors.green.shade300
-                                  : Colors.green.shade700,
+                                  ? Colors.blue.shade300
+                                  : Colors.blue.shade700,
                             ),
                           ),
                         ),
@@ -201,8 +201,8 @@ class _FlashCardTabState extends State<FlashCardTab> {
               ),
               foregroundColor: Theme.of(context).colorScheme.onPrimary,
               backgroundColor: Theme.of(context).brightness == Brightness.dark
-                  ? Colors.green.shade700
-                  : Colors.green,
+                  ? Colors.amber.shade700
+                  : Colors.amber,
               padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             ),
           ),
@@ -237,8 +237,8 @@ class _FlashCardTabState extends State<FlashCardTab> {
               ),
               foregroundColor: Theme.of(context).colorScheme.onPrimary,
               backgroundColor: Theme.of(context).brightness == Brightness.dark
-                  ? Colors.green.shade700
-                  : Colors.green,
+                  ? Colors.amber.shade700
+                  : Colors.amber,
             ),
           ),
         ],

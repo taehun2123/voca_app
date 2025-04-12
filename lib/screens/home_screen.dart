@@ -937,6 +937,8 @@ class _HomePageState extends State<HomePage>
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
+// home_screen.dart에서 AppBar 부분 변경
+
       appBar: AppBar(
         elevation: 0,
         backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
@@ -944,7 +946,9 @@ class _HomePageState extends State<HomePage>
         leading: IconButton(
           icon: Icon(
             Icons.shopping_cart,
-            color: isDarkMode ? Colors.amber.shade300 : Colors.amber.shade800,
+            color: isDarkMode
+                ? Colors.amber.shade300
+                : Colors.amber.shade800, // 햄스터 색상에 맞게 변경
           ),
           onPressed: () {
             // 인앱결제 화면으로 이동
@@ -977,13 +981,31 @@ class _HomePageState extends State<HomePage>
               _showAdminLogin();
             }
           },
-          child: Text(
-            '찍어보카',
-            style: TextStyle(
-              color: isDarkMode ? Colors.white : Colors.black87,
-              fontWeight: FontWeight.w600,
-              fontSize: 20,
-            ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // 햄스터 아이콘 추가 (작은 이미지로 표시, 중앙 정렬)
+              Container(
+                width: 30,
+                height: 30,
+                child: Center(
+                  child: Text(
+                    '🐹', // 햄스터 이모지 사용
+                    style: TextStyle(fontSize: 18),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ),
+              SizedBox(width: 8),
+              Text(
+                '찍어보카',
+                style: TextStyle(
+                  color: isDarkMode ? Colors.white : Colors.black87,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 20,
+                ),
+              ),
+            ],
           ),
         ),
         actions: [
@@ -993,7 +1015,9 @@ class _HomePageState extends State<HomePage>
               Provider.of<ThemeProvider>(context).isDarkMode
                   ? Icons.light_mode
                   : Icons.dark_mode,
-              color: isDarkMode ? Colors.amber.shade300 : Colors.amber.shade800,
+              color: isDarkMode
+                  ? Colors.amber.shade300
+                  : Colors.amber.shade800, // 햄스터 색상에 맞게 변경
             ),
             onPressed: () {
               // 테마 전환
@@ -1002,8 +1026,7 @@ class _HomePageState extends State<HomePage>
             tooltip: '테마 변경',
           ),
         ],
-      ),
-      // 메인 컨텐츠 영역 - TabBarView 유지
+      ), // 메인 컨텐츠 영역 - TabBarView 유지
       body: TabBarView(
         controller: _tabController,
         physics: _isProcessing
@@ -1097,7 +1120,9 @@ class _HomePageState extends State<HomePage>
             },
             type: BottomNavigationBarType.fixed, // 4개 이상 항목이 있을 때 필요
             backgroundColor: isDarkMode ? Color(0xFF1E1E1E) : Colors.white,
-            selectedItemColor: isDarkMode ? Colors.blue.shade300 : Colors.blue,
+            selectedItemColor: isDarkMode
+                ? Colors.amber.shade300
+                : Colors.amber.shade700, // 햄스터 색상으로 변경
             unselectedItemColor:
                 isDarkMode ? Colors.grey.shade600 : Colors.grey.shade700,
             selectedLabelStyle:
@@ -1114,11 +1139,11 @@ class _HomePageState extends State<HomePage>
                 label: '단어장',
               ),
               BottomNavigationBarItem(
-                icon: Icon(Icons.quiz),
+                icon: Icon(Icons.flip_to_front), // 더 적절한 아이콘으로 변경
                 label: '플래시카드',
               ),
               BottomNavigationBarItem(
-                icon: Icon(Icons.games),
+                icon: Icon(Icons.psychology), // 더 적절한 아이콘으로 변경
                 label: '퀴즈',
               ),
             ],

@@ -1,3 +1,5 @@
+import 'package:shared_preferences/shared_preferences.dart';
+
 import '../model/word_entry.dart';
 import 'db_service.dart';
 
@@ -65,7 +67,19 @@ class StorageService {
   }
 
   // lib/services/storage_service.dart에 메서드 추가
-Future<void> deleteNullDayWords() async {
-  await _dbService.deleteNullDayWords();
-}
+  Future<void> deleteNullDayWords() async {
+    await _dbService.deleteNullDayWords();
+  }
+
+  Future<void> deleteDayCollection(String day) async {
+    // 단어장 정보 삭제
+    final prefs = await SharedPreferences.getInstance();
+    final key = 'day_collection_$day';
+    await prefs.remove(key);
+    
+    // 해당 단어장의 단어들도 삭제
+    final allWords = await getAllWords(); // getWords() -> getAllWords()로 수정
+    final wordsToKeep = allWords.where((word) => word.day != day).toList();
+    await saveWords(wordsToKeep); // saveAllWords() -> saveWords()로 수정
+  }
 }

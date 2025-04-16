@@ -7,13 +7,15 @@ class ManualWordAddScreen extends StatefulWidget {
   final List<WordEntry> existingWords;
   final Map<String, List<WordEntry>> dayCollections;
   final Function(String, List<WordEntry>) onDayCollectionUpdated;
+  final Future<void> Function() cleanUpEmptyDayCollection;
 
   const ManualWordAddScreen({
     Key? key,
     this.initialDayName,
     this.existingWords = const [],
     required this.dayCollections,
-    required this.onDayCollectionUpdated,
+    required this.onDayCollectionUpdated, 
+    required this.cleanUpEmptyDayCollection,
   }) : super(key: key);
 
   @override
@@ -23,6 +25,8 @@ class ManualWordAddScreen extends StatefulWidget {
 class _ManualWordAddScreenState extends State<ManualWordAddScreen> {
   final _formKey = GlobalKey<FormState>();
   final List<WordEntry> _addedWords = [];
+
+  late final Future<void> Function() _cleanUpEmptyDayCollection;
 
   // 기존 단어 목록 (보기용)
   late List<WordEntry> _existingWordsList = [];
@@ -44,39 +48,348 @@ class _ManualWordAddScreenState extends State<ManualWordAddScreen> {
   Map<String, List<WordEntry>> _dayCollections = {};
 
   // 단어장 이름
-  String? _currentDay;
+  late String _currentDay;
   bool _isInitialized = false;
 
   @override
   void initState() {
     super.initState();
-    _currentDay = widget.initialDayName;
     _dayCollections = Map<String, List<WordEntry>>.from(widget.dayCollections
         .map((key, value) => MapEntry(key, List<WordEntry>.from(value))));
-    // 화면이 완전히 빌드된 후 다이얼로그 표시
+    // cleanUpEmptyDayCollection 함수 초기화
+    _cleanUpEmptyDayCollection = widget.cleanUpEmptyDayCollection;
+    // 화면이 완전히 빌드된 후 즉시 다이얼로그 표시
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_currentDay == null) {
-        _showDaySelectionDialog(initialSelection: true);
-      } else {
-        _loadExistingWordsForCurrentDay();
-        setState(() {
-          _isInitialized = true;
-        });
-      }
+      // 먼저 단어장 선택 다이얼로그 표시
+      _showInitialDaySelectionDialog();
     });
   }
 
-  // 현재 단어장의 단어들만 로드
+  Future<void> _showInitialDaySelectionDialog() async {
+    // 다음 DAY 번호 계산
+    int nextDayNum = calculateNextDayNumber(_dayCollections);
+    final String suggestedDay = 'DAY $nextDayNum';
+
+    // 기본 선택 옵션
+    bool createNewCollection = true;
+    String selectedExistingDay =
+        _dayCollections.isNotEmpty ? _dayCollections.keys.first : suggestedDay;
+
+    // TextEditingController는 새 단어장 이름 입력용
+    final TextEditingController controller =
+        TextEditingController(text: suggestedDay);
+
+    // 다이얼로그 표시
+    final result = await showDialog<Map<String, dynamic>>(
+      context: context,
+      barrierDismissible: false, // 반드시 선택하도록 함
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) {
+          return AlertDialog(
+            backgroundColor: Theme.of(context).cardColor,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            title: Text(
+              '단어장 설정',
+              style: TextStyle(
+                color: Theme.of(context).textTheme.titleLarge?.color,
+              ),
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // 모드 선택 라디오 버튼
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(
+                    '새 단어장 만들기',
+                    style: TextStyle(
+                      color: Theme.of(context).textTheme.bodyLarge?.color,
+                    ),
+                  ),
+                  leading: Radio<bool>(
+                    value: true,
+                    groupValue: createNewCollection,
+                    onChanged: (value) {
+                      setState(() {
+                        createNewCollection = value!;
+                      });
+                    },
+                  ),
+                ),
+
+                // 새 단어장 모드일 때 이름 입력 필드
+                if (createNewCollection)
+                  Padding(
+                    padding: const EdgeInsets.only(left: 30.0, bottom: 8.0),
+                    child: TextField(
+                      controller: controller,
+                      style: TextStyle(
+                        color: Theme.of(context).textTheme.bodyLarge?.color,
+                      ),
+                      decoration: InputDecoration(
+                        hintText: '예: DAY 1',
+                        hintStyle: TextStyle(
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? Colors.grey.shade600
+                              : Colors.grey.shade400,
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(
+                            color: Theme.of(context).dividerColor,
+                          ),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(
+                            color: Theme.of(context).colorScheme.primary,
+                            width: 2,
+                          ),
+                        ),
+                        contentPadding:
+                            EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                        fillColor:
+                            Theme.of(context).brightness == Brightness.dark
+                                ? Colors.grey.shade800.withOpacity(0.5)
+                                : Colors.white,
+                        filled: true,
+                      ),
+                    ),
+                  ),
+
+                // 기존 단어장 선택 옵션
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(
+                    '기존 단어장에 추가',
+                    style: TextStyle(
+                      color: Theme.of(context).textTheme.bodyLarge?.color,
+                    ),
+                  ),
+                  leading: Radio<bool>(
+                    value: false,
+                    groupValue: createNewCollection,
+                    onChanged: _dayCollections.isEmpty
+                        ? null // 단어장이 없으면 비활성화
+                        : (value) {
+                            setState(() {
+                              createNewCollection = value!;
+                            });
+                          },
+                  ),
+                ),
+
+                // 기존 단어장 목록 (기존 단어장 모드일 때만 표시)
+                if (!createNewCollection && _dayCollections.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(left: 30.0),
+                    child: Container(
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 12, vertical: 0),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: Theme.of(context).dividerColor,
+                        ),
+                        color: Theme.of(context).cardColor,
+                      ),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<String>(
+                          isExpanded: true,
+                          value: selectedExistingDay,
+                          items: _dayCollections.keys.map((String day) {
+                            final count = _dayCollections[day]?.length ?? 0;
+                            return DropdownMenuItem<String>(
+                              value: day,
+                              child: Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(day),
+                                  Container(
+                                    padding: EdgeInsets.symmetric(
+                                        horizontal: 8, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: Theme.of(context).brightness ==
+                                              Brightness.dark
+                                          ? Colors.blue.shade900
+                                              .withOpacity(0.3)
+                                          : Colors.blue.shade50,
+                                      borderRadius: BorderRadius.circular(16),
+                                    ),
+                                    child: Text(
+                                      '$count단어',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Theme.of(context).brightness ==
+                                                Brightness.dark
+                                            ? Colors.blue.shade300
+                                            : Colors.blue.shade700,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }).toList(),
+                          onChanged: (String? newValue) {
+                            if (newValue != null) {
+                              setState(() {
+                                selectedExistingDay = newValue;
+                              });
+                            }
+                          },
+                          icon: Icon(
+                            Icons.keyboard_arrow_down,
+                            color: Theme.of(context).iconTheme.color,
+                          ),
+                          style: TextStyle(
+                            color: Theme.of(context).textTheme.bodyLarge?.color,
+                            fontSize: 16,
+                          ),
+                          dropdownColor: Theme.of(context).cardColor,
+                        ),
+                      ),
+                    ),
+                  ),
+
+                // 단어장이 없을 때 메시지
+                if (!createNewCollection && _dayCollections.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(left: 30.0),
+                    child: Text(
+                      '저장된 단어장이 없습니다.',
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.error,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  // 취소 버튼을 누르면 단어장 생성 없이 이전 화면으로 돌아감
+                  _cleanUpEmptyDayCollection(); // 빈 단어장 정리
+                  Navigator.of(context).pop(null);
+                },
+                child: Text('취소'),
+                style: TextButton.styleFrom(
+                  foregroundColor:
+                      Theme.of(context).brightness == Brightness.dark
+                          ? Colors.grey.shade300
+                          : Colors.grey.shade700,
+                ),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  String selectedDay;
+                  bool isNewDay = false;
+
+                  if (createNewCollection) {
+                    // 새 단어장 생성 모드
+                    selectedDay = controller.text.trim();
+
+                    // 이름이 비어있으면 기본값 사용
+                    if (selectedDay.isEmpty) {
+                      selectedDay = suggestedDay;
+                    }
+
+                    // 이미 존재하는 단어장인지 확인
+                    if (_dayCollections.containsKey(selectedDay)) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('이미 존재하는 단어장 이름입니다.'),
+                          behavior: SnackBarBehavior.floating,
+                        ),
+                      );
+                      return;
+                    }
+
+                    isNewDay = true;
+                  } else {
+                    // 기존 단어장 사용
+                    selectedDay = selectedExistingDay;
+                  }
+
+                  Navigator.of(context)
+                      .pop({'day': selectedDay, 'isNew': isNewDay});
+                },
+                child: Text('확인'),
+                style: ElevatedButton.styleFrom(
+                  foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                  backgroundColor: Theme.of(context).colorScheme.primary,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+
+    // 컨트롤러 정리
+    controller.dispose();
+
+    // 결과 처리
+    if (result != null) {
+      setState(() {
+        _currentDay = result['day'];
+        _isInitialized = true;
+
+        // 새 단어장을 생성한 경우 단어 컬렉션 초기화
+        if (result['isNew'] && !_dayCollections.containsKey(_currentDay)) {
+          _dayCollections[_currentDay] = [];
+        }
+      });
+
+      // 기존 단어 목록 로드 - 기존 단어장이면 단어 목록 표시
+      _loadExistingWordsForCurrentDay();
+
+      // 부모 위젯에 새 단어장 생성 알림 (필요시)
+      if (result['isNew']) {
+        widget.onDayCollectionUpdated(_currentDay, []);
+      }
+    } else {
+      // 다이얼로그를 취소한 경우 이전 화면으로 돌아가기
+      Navigator.of(context).pop();
+    }
+  }
+
+// 2. 기존 단어장의 단어들을 로드하는 메서드 개선
   void _loadExistingWordsForCurrentDay() {
     if (_currentDay == null) return;
 
     setState(() {
-      _existingWordsList = widget.existingWords
+      // 현재 선택된 단어장의 단어 목록 가져오기
+      if (widget.dayCollections.containsKey(_currentDay)) {
+        _existingWordsList = widget.dayCollections[_currentDay] ?? [];
+      } else {
+        _existingWordsList = [];
+      }
+
+      // 해당 단어장이 widget.existingWords에 있는지 확인 (단어 중복 체크용)
+      List<WordEntry> daySpecificWords = widget.existingWords
           .where((word) => word.day == _currentDay)
           .toList();
+
+      // 필요시 두 목록 병합 (중복 없이)
+      if (daySpecificWords.isNotEmpty && _existingWordsList.isEmpty) {
+        _existingWordsList = daySpecificWords;
+      }
     });
+
+    print('단어장 $_currentDay의 단어 ${_existingWordsList.length}개 로드됨');
   }
 
+// 3. 저장 처리 개선 - 빈 단어장은 저장하지 않도록
   @override
   void dispose() {
     // 컨트롤러 해제
@@ -352,119 +665,131 @@ class _ManualWordAddScreenState extends State<ManualWordAddScreen> {
       );
     }
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('단어 직접 추가'),
-        actions: [
-          IconButton(
-            icon: Icon(Icons.drive_file_rename_outline),
-            tooltip: '단어장 선택',
-            onPressed: () => _showDaySelectionDialog(),
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
-          // 단어장 정보
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  _currentDay ?? '단어장 미선택',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                Text(
-                  '추가된 단어: ${_addedWords.length}개',
-                  style: TextStyle(
-                    color: Colors.grey[700],
-                  ),
-                ),
-              ],
+    return PopScope(
+      canPop: true,
+      onPopInvokedWithResult: (bool didPop, dynamic result) async {
+        // 뒤로가기 버튼 누를 때 빈 단어장 정리
+        if (didPop) {
+          await _cleanUpEmptyDayCollection();
+        }
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text('단어 직접 추가'),
+          actions: [
+            IconButton(
+              icon: Icon(Icons.drive_file_rename_outline),
+              tooltip: '단어장 선택',
+              onPressed: () => _showDaySelectionDialog(),
             ),
-          ),
-
-          Divider(),
-
-          // 입력 폼과 추가된 단어 목록을 탭으로 구분
-          Expanded(
-            child: DefaultTabController(
-              length: 3, // 탭 3개: 단어 입력, 추가된 단어, 기존 단어
-              child: Column(
+          ],
+        ),
+        body: Column(
+          children: [
+            // 단어장 정보
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  TabBar(
-                    labelColor: isDarkMode
-                        ? Colors.amber.shade300
-                        : Colors.amber.shade700,
-                    unselectedLabelColor: isDarkMode
-                        ? Colors.grey.shade400
-                        : Colors.grey.shade700,
-                    indicatorColor: isDarkMode
-                        ? Colors.amber.shade300
-                        : Colors.amber.shade700,
-                    tabs: [
-                      Tab(text: '단어 입력'),
-                      Tab(text: '추가된 단어 (${_addedWords.length})'),
-                      Tab(text: '기존 단어 (${_existingWordsList.length})'),
-                    ],
+                  Text(
+                    _currentDay ?? '단어장 미선택',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                  Expanded(
-                    child: TabBarView(
-                      children: [
-                        // 단어 입력 폼
-                        _buildInputForm(),
-
-                        // 추가된 단어 목록
-                        _buildAddedWordsList(),
-
-                        // 기존 단어 목록
-                        _buildExistingWordsList(),
-                      ],
+                  Text(
+                    '추가된 단어: ${_addedWords.length}개',
+                    style: TextStyle(
+                      color: Colors.grey[700],
                     ),
                   ),
                 ],
               ),
             ),
-          ),
-        ],
-      ),
-      bottomNavigationBar: BottomAppBar(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                '총 ${_addedWords.length}개 단어 추가됨',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              ElevatedButton(
-                onPressed: _addedWords.isEmpty || _currentDay == null
-                    ? null
-                    : () {
-                        // 단어장 데이터 업데이트 (부모 위젯에 알림)
-                        _updateDayCollection();
 
-                        // 이전 화면으로 돌아가기
-                        Navigator.of(context).pop({
-                          'words': _addedWords,
-                          'dayName': _currentDay,
-                        });
-                      },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor:
-                      isDarkMode ? Colors.green.shade600 : Colors.green,
-                  foregroundColor: Colors.white,
+            Divider(),
+
+            // 입력 폼과 추가된 단어 목록을 탭으로 구분
+            Expanded(
+              child: DefaultTabController(
+                length: 3, // 탭 3개: 단어 입력, 추가된 단어, 기존 단어
+                child: Column(
+                  children: [
+                    TabBar(
+                      labelColor: isDarkMode
+                          ? Colors.amber.shade300
+                          : Colors.amber.shade700,
+                      unselectedLabelColor: isDarkMode
+                          ? Colors.grey.shade400
+                          : Colors.grey.shade700,
+                      indicatorColor: isDarkMode
+                          ? Colors.amber.shade300
+                          : Colors.amber.shade700,
+                      tabs: [
+                        Tab(text: '단어 입력'),
+                        Tab(text: '추가된 단어 (${_addedWords.length})'),
+                        Tab(text: '기존 단어 (${_existingWordsList.length})'),
+                      ],
+                    ),
+                    Expanded(
+                      child: TabBarView(
+                        children: [
+                          // 단어 입력 폼
+                          _buildInputForm(),
+
+                          // 추가된 단어 목록
+                          _buildAddedWordsList(),
+
+                          // 기존 단어 목록
+                          _buildExistingWordsList(),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-                child: Text('저장'),
               ),
-            ],
+            ),
+          ],
+        ),
+        bottomNavigationBar: BottomAppBar(
+          child: Padding(
+            padding:
+                const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  '총 ${_addedWords.length}개 단어 추가됨',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                ElevatedButton(
+                  onPressed: _addedWords.isEmpty || _currentDay == null
+                      ? null
+                      : () {
+                          // 단어장 데이터 업데이트 (부모 위젯에 알림)
+                          _updateDayCollection();
+
+                          _cleanUpEmptyDayCollection;
+
+                          // 이전 화면으로 돌아가기
+                          Navigator.of(context).pop({
+                            'words': _addedWords,
+                            'dayName': _currentDay,
+                          });
+                        },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor:
+                        isDarkMode ? Colors.green.shade600 : Colors.green,
+                    foregroundColor: Colors.white,
+                  ),
+                  child: Text('저장'),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -566,7 +891,7 @@ class _ManualWordAddScreenState extends State<ManualWordAddScreen> {
 
             SizedBox(height: 24),
 
-// 관용구 섹션
+    // 관용구 섹션
             Text(
               '관용구 or 기출 표현 (선택사항)',
               style: TextStyle(
@@ -1007,7 +1332,6 @@ class _ManualWordAddScreenState extends State<ManualWordAddScreen> {
     );
   }
 
-// 이런 함수가 필요합니다
   void _updateDayCollection() {
     if (_currentDay == null) return;
 

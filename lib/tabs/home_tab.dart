@@ -27,7 +27,9 @@ class HomeTab extends StatefulWidget {
 
 class _HomeTabState extends State<HomeTab> {
   final TodoService _todoService = TodoService();
-
+  // 진행 중인 항목과 완료된 항목을 분리
+  List<TodoItem> _activeTodos = [];
+  List<TodoItem> _completedTodos = [];
   // 캘린더 관련 변수
   CalendarFormat _calendarFormat = CalendarFormat.week;
   DateTime _focusedDay = DateTime.now();
@@ -56,7 +58,7 @@ class _HomeTabState extends State<HomeTab> {
       await _todoService.initTable();
 
       // 오늘 날짜의 할 일 로드
-      await _loadTodosForSelectedDate();
+      _loadTodosForSelectedDate();
 
       // 이벤트 개수 로드 (캘린더 마커용)
       await _loadEventCounts();
@@ -78,15 +80,17 @@ class _HomeTabState extends State<HomeTab> {
     }
   }
 
-  // 선택된 날짜의 할 일 로드
-  Future<void> _loadTodosForSelectedDate() async {
+// 데이터 로드 시 분류
+  void _loadTodosForSelectedDate() async {
     if (_selectedDay == null) return;
 
     final todos = await _todoService.getTodosByDate(_selectedDay!);
 
     if (mounted) {
       setState(() {
-        _todoItems = todos;
+        _todoItems = todos; // 전체 목록 유지
+        _activeTodos = todos.where((item) => !item.isCompleted).toList();
+        _completedTodos = todos.where((item) => item.isCompleted).toList();
       });
     }
   }
@@ -291,24 +295,37 @@ class _HomeTabState extends State<HomeTab> {
     }
   }
 
-  // 할 일 완료 상태 토글
   Future<void> _toggleTodoCompleted(TodoItem todo) async {
     if (todo.id == null) return;
 
+    final newStatus = !todo.isCompleted;
+
     try {
       // 데이터베이스 업데이트
-      await _todoService.toggleCompleted(todo.id!, !todo.isCompleted);
+      await _todoService.toggleCompleted(todo.id!, newStatus);
 
-      // UI 업데이트
+      // UI 업데이트 - 항목 상태만 변경하고 목록에서 제거하지 않음
       setState(() {
         final index = _todoItems.indexWhere((item) => item.id == todo.id);
         if (index != -1) {
-          _todoItems[index] = todo.copyWith(isCompleted: !todo.isCompleted);
+          _todoItems[index] = todo.copyWith(isCompleted: newStatus);
         }
+
+        // 섹션을 사용하는 경우 아래와 같이 업데이트
+        _activeTodos = _todoItems.where((item) => !item.isCompleted).toList();
+        _completedTodos = _todoItems.where((item) => item.isCompleted).toList();
       });
+
+      // 성공 메시지
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(newStatus ? '목표를 완료했습니다! 🎉' : '목표를 다시 진행 중으로 표시했습니다'),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: newStatus ? Colors.green : Colors.blue,
+        ),
+      );
     } catch (e) {
       print('할 일 상태 변경 중 오류: $e');
-      // 오류 메시지
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('상태 변경 중 오류가 발생했습니다'),
@@ -347,42 +364,6 @@ class _HomeTabState extends State<HomeTab> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('삭제 중 오류가 발생했습니다'),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-    }
-  }
-
-  // 할 일 완료 처리
-  Future<void> _completeTodo(TodoItem todo) async {
-    if (todo.id == null) return;
-
-    try {
-      // 데이터베이스 업데이트
-      await _todoService.toggleCompleted(todo.id!, true);
-
-      // UI 업데이트
-      setState(() {
-        final index = _todoItems.indexWhere((item) => item.id == todo.id);
-        if (index != -1) {
-          _todoItems[index] = todo.copyWith(isCompleted: true);
-        }
-      });
-
-      // 성공 메시지
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('목표를 완료했습니다! 🎉'),
-          behavior: SnackBarBehavior.floating,
-          backgroundColor: Colors.green,
-        ),
-      );
-    } catch (e) {
-      print('할 일 완료 처리 중 오류: $e');
-      // 오류 메시지
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('완료 처리 중 오류가 발생했습니다'),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -664,6 +645,7 @@ class _HomeTabState extends State<HomeTab> {
                   SizedBox(height: 24),
 
 // 학습 목표 (TodoList)
+// 학습 목표 (TodoList) 부분을 아래와 같이 수정합니다
                   Card(
                     elevation: 4,
                     shape: RoundedRectangleBorder(
@@ -695,7 +677,7 @@ class _HomeTabState extends State<HomeTab> {
                             ],
                           ),
                           SizedBox(height: 8),
-                          if (_todoItems.isEmpty)
+                          if (_activeTodos.isEmpty && _completedTodos.isEmpty)
                             Padding(
                               padding: const EdgeInsets.all(16.0),
                               child: Center(
@@ -709,172 +691,393 @@ class _HomeTabState extends State<HomeTab> {
                               ),
                             )
                           else
-                            ListView.builder(
-                              shrinkWrap: true,
-                              physics: NeverScrollableScrollPhysics(),
-                              itemCount: _todoItems.length,
-                              itemBuilder: (context, index) {
-                                final item = _todoItems[index];
-                                final isToday = isSameDay(item.dueDate, today);
-                                final bool isPast = item.dueDate.isBefore(
-                                    DateTime(
-                                        today.year, today.month, today.day));
-
-                                return Dismissible(
-                                  key: Key(
-                                      'todo_${item.id ?? index}_${item.title}'),
-                                  background: Container(
-                                    color: Colors.green,
-                                    alignment: Alignment.centerLeft,
-                                    padding: EdgeInsets.only(left: 16),
-                                    child:
-                                        Icon(Icons.check, color: Colors.white),
-                                  ),
-                                  secondaryBackground: Container(
-                                    color: Colors.red,
-                                    alignment: Alignment.centerRight,
-                                    padding: EdgeInsets.only(right: 16),
-                                    child:
-                                        Icon(Icons.delete, color: Colors.white),
-                                  ),
-                                  confirmDismiss: (direction) async {
-                                    if (direction ==
-                                        DismissDirection.endToStart) {
-                                      // 오른쪽으로 스와이프 - 삭제 확인
-                                      return await showDialog<bool>(
-                                            context: context,
-                                            builder: (context) => AlertDialog(
-                                              title: Text('목표 삭제'),
-                                              content:
-                                                  Text('이 학습 목표를 삭제하시겠습니까?'),
-                                              actions: [
-                                                TextButton(
-                                                  onPressed: () =>
-                                                      Navigator.of(context)
-                                                          .pop(false),
-                                                  child: Text('취소'),
-                                                ),
-                                                TextButton(
-                                                  onPressed: () =>
-                                                      Navigator.of(context)
-                                                          .pop(true),
-                                                  child: Text('삭제'),
-                                                  style: TextButton.styleFrom(
-                                                    foregroundColor: Colors.red,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ) ??
-                                          false;
-                                    } else {
-                                      // 왼쪽으로 스와이프 - 완료 확인
-                                      if (item.isCompleted)
-                                        return false; // 이미 완료된 항목은 무시
-
-                                      return await showDialog<bool>(
-                                            context: context,
-                                            builder: (context) => AlertDialog(
-                                              title: Text('목표 완료'),
-                                              content: Text(
-                                                  '이 학습 목표를 완료로 표시하시겠습니까?'),
-                                              actions: [
-                                                TextButton(
-                                                  onPressed: () =>
-                                                      Navigator.of(context)
-                                                          .pop(false),
-                                                  child: Text('취소'),
-                                                ),
-                                                TextButton(
-                                                  onPressed: () =>
-                                                      Navigator.of(context)
-                                                          .pop(true),
-                                                  child: Text('완료'),
-                                                  style: TextButton.styleFrom(
-                                                    foregroundColor:
-                                                        Colors.green,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ) ??
-                                          false;
-                                    }
-                                  },
-                                  onDismissed: (direction) {
-                                    if (direction ==
-                                        DismissDirection.endToStart) {
-                                      // 오른쪽으로 스와이프 - 삭제
-                                      _deleteTodo(item);
-                                    } else {
-                                      // 왼쪽으로 스와이프 - 완료
-                                      _completeTodo(item);
-                                    }
-                                  },
-                                  child: ListTile(
-                                    contentPadding: EdgeInsets.symmetric(
-                                      vertical: 4,
-                                      horizontal: 16,
-                                    ),
-                                    title: Text(
-                                      item.title,
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                // 진행 중인 항목 섹션
+                                if (_activeTodos.isNotEmpty) ...[
+                                  Padding(
+                                    padding: const EdgeInsets.only(
+                                        top: 8.0, bottom: 12.0),
+                                    child: Text(
+                                      '진행 중인 목표',
                                       style: TextStyle(
-                                        decoration: item.isCompleted
-                                            ? TextDecoration.lineThrough
-                                            : null,
-                                        color: item.isCompleted
-                                            ? Colors.grey
-                                            : null,
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                        color: isDarkMode
+                                            ? Colors.green.shade300
+                                            : Colors.green.shade700,
                                       ),
                                     ),
-                                    subtitle: Row(
-                                      children: [
-                                        Icon(
-                                          Icons.calendar_today,
-                                          size: 12,
-                                          color: isPast && !item.isCompleted
-                                              ? Colors.red
-                                              : isToday
-                                                  ? (isDarkMode
-                                                      ? Colors.amber[300]
-                                                      : Colors.amber[700])
-                                                  : Colors.grey,
+                                  ),
+                                  ListView.builder(
+                                    shrinkWrap: true,
+                                    physics: NeverScrollableScrollPhysics(),
+                                    itemCount: _activeTodos.length,
+                                    itemBuilder: (context, index) {
+                                      final item = _activeTodos[index];
+                                      final isToday =
+                                          isSameDay(item.dueDate, today);
+                                      final bool isPast = item.dueDate.isBefore(
+                                          DateTime(today.year, today.month,
+                                              today.day));
+
+                                      return Dismissible(
+                                        key: Key(
+                                            'todo_active_${item.id ?? index}_${item.title}'),
+                                        background: Container(
+                                          color: Colors.green,
+                                          alignment: Alignment.centerLeft,
+                                          padding: EdgeInsets.only(left: 16),
+                                          child: Icon(Icons.check,
+                                              color: Colors.white),
                                         ),
-                                        SizedBox(width: 4),
+                                        secondaryBackground: Container(
+                                          color: Colors.red,
+                                          alignment: Alignment.centerRight,
+                                          padding: EdgeInsets.only(right: 16),
+                                          child: Icon(Icons.delete,
+                                              color: Colors.white),
+                                        ),
+                                        confirmDismiss: (direction) async {
+                                          if (direction ==
+                                              DismissDirection.endToStart) {
+                                            // 오른쪽으로 스와이프 - 삭제 확인
+                                            return await showDialog<bool>(
+                                                  context: context,
+                                                  builder: (context) =>
+                                                      AlertDialog(
+                                                    title: Text('목표 삭제'),
+                                                    content: Text(
+                                                        '이 학습 목표를 삭제하시겠습니까?'),
+                                                    actions: [
+                                                      TextButton(
+                                                        onPressed: () =>
+                                                            Navigator.of(
+                                                                    context)
+                                                                .pop(false),
+                                                        child: Text('취소'),
+                                                      ),
+                                                      TextButton(
+                                                        onPressed: () =>
+                                                            Navigator.of(
+                                                                    context)
+                                                                .pop(true),
+                                                        child: Text('삭제'),
+                                                        style: TextButton
+                                                            .styleFrom(
+                                                          foregroundColor:
+                                                              Colors.red,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ) ??
+                                                false;
+                                          } else {
+                                            // 왼쪽으로 스와이프 - 완료 확인
+                                            return await showDialog<bool>(
+                                                  context: context,
+                                                  builder: (context) =>
+                                                      AlertDialog(
+                                                    title: Text('목표 완료'),
+                                                    content: Text(
+                                                        '이 학습 목표를 완료로 표시하시겠습니까?'),
+                                                    actions: [
+                                                      TextButton(
+                                                        onPressed: () =>
+                                                            Navigator.of(
+                                                                    context)
+                                                                .pop(false),
+                                                        child: Text('취소'),
+                                                      ),
+                                                      TextButton(
+                                                        onPressed: () =>
+                                                            Navigator.of(
+                                                                    context)
+                                                                .pop(true),
+                                                        child: Text('완료'),
+                                                        style: TextButton
+                                                            .styleFrom(
+                                                          foregroundColor:
+                                                              Colors.green,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ) ??
+                                                false;
+                                          }
+                                        },
+                                        onDismissed: (direction) {
+                                          if (direction ==
+                                              DismissDirection.endToStart) {
+                                            // 오른쪽으로 스와이프 - 삭제
+                                            _deleteTodo(item);
+                                          } else {
+                                            // 왼쪽으로 스와이프 - 완료
+                                            _toggleTodoCompleted(item);
+                                          }
+                                          // 중요: setState를 호출하여 UI를 즉시 업데이트
+                                          setState(() {
+                                            // 스와이프 후 UI에서 제거 (실제 데이터는 이미 업데이트되었음)
+                                            _activeTodos.removeWhere(
+                                                (todo) => todo.id == item.id);
+                                          });
+                                        },
+                                        child: ListTile(
+                                          contentPadding: EdgeInsets.symmetric(
+                                            vertical: 4,
+                                            horizontal: 16,
+                                          ),
+                                          title: Text(item.title),
+                                          subtitle: Row(
+                                            children: [
+                                              Icon(
+                                                Icons.calendar_today,
+                                                size: 12,
+                                                color: isPast
+                                                    ? Colors.red
+                                                    : isToday
+                                                        ? (isDarkMode
+                                                            ? Colors.amber[300]
+                                                            : Colors.amber[700])
+                                                        : Colors.grey,
+                                              ),
+                                              SizedBox(width: 4),
+                                              Text(
+                                                isToday
+                                                    ? '오늘'
+                                                    : DateFormat('yyyy-MM-dd')
+                                                        .format(item.dueDate),
+                                                style: TextStyle(
+                                                  color: isPast
+                                                      ? Colors.red
+                                                      : isToday
+                                                          ? (isDarkMode
+                                                              ? Colors
+                                                                  .amber[300]
+                                                              : Colors
+                                                                  .amber[700])
+                                                          : Colors.grey,
+                                                  fontWeight: isToday
+                                                      ? FontWeight.bold
+                                                      : null,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          trailing: Checkbox(
+                                            value: false, // 진행 중인 항목은 항상 false
+                                            onChanged: (value) {
+                                              if (value != null && value) {
+                                                _toggleTodoCompleted(item);
+                                              }
+                                            },
+                                            activeColor: isDarkMode
+                                                ? Colors.green[700]
+                                                : Colors.green[600],
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ],
+
+                                // 완료된 항목 섹션
+                                if (_completedTodos.isNotEmpty) ...[
+                                  Padding(
+                                    padding: const EdgeInsets.only(
+                                        top: 24.0, bottom: 12.0),
+                                    child: Row(
+                                      children: [
                                         Text(
-                                          isToday
-                                              ? '오늘'
-                                              : DateFormat('yyyy-MM-dd')
-                                                  .format(item.dueDate),
+                                          '완료된 목표',
                                           style: TextStyle(
-                                            color: isPast && !item.isCompleted
-                                                ? Colors.red
-                                                : isToday
-                                                    ? (isDarkMode
-                                                        ? Colors.amber[300]
-                                                        : Colors.amber[700])
-                                                    : Colors.grey,
-                                            fontWeight: isToday
-                                                ? FontWeight.bold
-                                                : null,
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.grey[600],
+                                          ),
+                                        ),
+                                        SizedBox(width: 8),
+                                        Container(
+                                          padding: EdgeInsets.symmetric(
+                                              horizontal: 8, vertical: 4),
+                                          decoration: BoxDecoration(
+                                            color: isDarkMode
+                                                ? Colors.grey.shade800
+                                                : Colors.grey.shade200,
+                                            borderRadius:
+                                                BorderRadius.circular(12),
+                                          ),
+                                          child: Text(
+                                            '${_completedTodos.length}개',
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: Colors.grey[600],
+                                            ),
                                           ),
                                         ),
                                       ],
                                     ),
-                                    trailing: Checkbox(
-                                      value: item.isCompleted,
-                                      onChanged: (value) {
-                                        if (value != null) {
-                                          _toggleTodoCompleted(item);
-                                        }
-                                      },
-                                      activeColor: isDarkMode
-                                          ? Colors.green[700]
-                                          : Colors.green[600],
-                                    ),
                                   ),
-                                );
-                              },
+                                  ListView.builder(
+                                    shrinkWrap: true,
+                                    physics: NeverScrollableScrollPhysics(),
+                                    itemCount: _completedTodos.length,
+                                    itemBuilder: (context, index) {
+                                      final item = _completedTodos[index];
+
+                                      return Dismissible(
+                                        key: Key(
+                                            'todo_completed_${item.id ?? index}_${item.title}'),
+                                        background: Container(
+                                          color: Colors.blue,
+                                          alignment: Alignment.centerLeft,
+                                          padding: EdgeInsets.only(left: 16),
+                                          child: Icon(Icons.replay,
+                                              color: Colors.white),
+                                        ),
+                                        secondaryBackground: Container(
+                                          color: Colors.red,
+                                          alignment: Alignment.centerRight,
+                                          padding: EdgeInsets.only(right: 16),
+                                          child: Icon(Icons.delete,
+                                              color: Colors.white),
+                                        ),
+                                        confirmDismiss: (direction) async {
+                                          if (direction ==
+                                              DismissDirection.endToStart) {
+                                            // 오른쪽으로 스와이프 - 삭제 확인
+                                            return await showDialog<bool>(
+                                                  context: context,
+                                                  builder: (context) =>
+                                                      AlertDialog(
+                                                    title: Text('목표 삭제'),
+                                                    content: Text(
+                                                        '이 완료된 목표를 삭제하시겠습니까?'),
+                                                    actions: [
+                                                      TextButton(
+                                                        onPressed: () =>
+                                                            Navigator.of(
+                                                                    context)
+                                                                .pop(false),
+                                                        child: Text('취소'),
+                                                      ),
+                                                      TextButton(
+                                                        onPressed: () =>
+                                                            Navigator.of(
+                                                                    context)
+                                                                .pop(true),
+                                                        child: Text('삭제'),
+                                                        style: TextButton
+                                                            .styleFrom(
+                                                          foregroundColor:
+                                                              Colors.red,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ) ??
+                                                false;
+                                          } else {
+                                            // 왼쪽으로 스와이프 - 진행 중으로 변경 확인
+                                            return await showDialog<bool>(
+                                                  context: context,
+                                                  builder: (context) =>
+                                                      AlertDialog(
+                                                    title: Text('목표 상태 변경'),
+                                                    content: Text(
+                                                        '이 목표를 다시 진행 중으로 변경하시겠습니까?'),
+                                                    actions: [
+                                                      TextButton(
+                                                        onPressed: () =>
+                                                            Navigator.of(
+                                                                    context)
+                                                                .pop(false),
+                                                        child: Text('취소'),
+                                                      ),
+                                                      TextButton(
+                                                        onPressed: () =>
+                                                            Navigator.of(
+                                                                    context)
+                                                                .pop(true),
+                                                        child: Text('변경'),
+                                                        style: TextButton
+                                                            .styleFrom(
+                                                          foregroundColor:
+                                                              Colors.blue,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ) ??
+                                                false;
+                                          }
+                                        },
+                                        onDismissed: (direction) {
+                                          if (direction ==
+                                              DismissDirection.endToStart) {
+                                            // 오른쪽으로 스와이프 - 삭제
+                                            _deleteTodo(item);
+                                          } else {
+                                            // 왼쪽으로 스와이프 - 진행 중으로 변경
+                                            _toggleTodoCompleted(item);
+                                          }
+                                          // 중요: setState를 호출하여 UI를 즉시 업데이트
+                                          setState(() {
+                                            // 스와이프 후 UI에서 제거 (실제 데이터는 이미 업데이트되었음)
+                                            _completedTodos.removeWhere(
+                                                (todo) => todo.id == item.id);
+                                          });
+                                        },
+                                        child: ListTile(
+                                          contentPadding: EdgeInsets.symmetric(
+                                            vertical: 4,
+                                            horizontal: 16,
+                                          ),
+                                          title: Text(
+                                            item.title,
+                                            style: TextStyle(
+                                              decoration:
+                                                  TextDecoration.lineThrough,
+                                              color: Colors.grey,
+                                            ),
+                                          ),
+                                          subtitle: Row(
+                                            children: [
+                                              Icon(
+                                                Icons.calendar_today,
+                                                size: 12,
+                                                color: Colors.grey,
+                                              ),
+                                              SizedBox(width: 4),
+                                              Text(
+                                                DateFormat('yyyy-MM-dd')
+                                                    .format(item.dueDate),
+                                                style: TextStyle(
+                                                  color: Colors.grey,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          trailing: Checkbox(
+                                            value: true, // 완료된 항목은 항상 true
+                                            onChanged: (value) {
+                                              if (value != null && !value) {
+                                                _toggleTodoCompleted(item);
+                                              }
+                                            },
+                                            activeColor: isDarkMode
+                                                ? Colors.green[700]
+                                                : Colors.green[600],
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ],
+                              ],
                             ),
                         ],
                       ),

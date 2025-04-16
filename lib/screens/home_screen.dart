@@ -88,7 +88,10 @@ class _HomePageState extends State<HomePage>
         // 탭이 변경되면 UI 강제 업데이트
         setState(() {
           // 현재 선택된 탭 인덱스는 _tabController.index로 접근
-          // 별도 변수 필요 없음
+          // FAB 확장 상태 초기화 (다른 탭으로 이동 시)
+          if (_isFabExpanded && _tabController.index != 1) {
+            _isFabExpanded = false;
+          }
         });
       }
     });
@@ -143,6 +146,7 @@ class _HomePageState extends State<HomePage>
     WidgetsBinding.instance.removeObserver(this);
     _tabController.dispose();
     _ttsService.dispose();
+    _cleanUpEmptyDayCollection();
     super.dispose();
   }
 
@@ -187,6 +191,7 @@ class _HomePageState extends State<HomePage>
           initialDayName: _currentDay,
           existingWords: existingWords,
           dayCollections: _dayCollections, // 전체 컬렉션 전달
+          cleanUpEmptyDayCollection: _cleanUpEmptyDayCollection,
           onDayCollectionUpdated: (dayName, words) {
             // 콜백을 통해 상태 업데이트
             setState(() {
@@ -487,6 +492,7 @@ class _HomePageState extends State<HomePage>
     }
 
     bool creditUsed = true;
+    String _prevDay = _currentDay;
 
     setState(() {
       _isProcessing = true;
@@ -644,6 +650,12 @@ class _HomePageState extends State<HomePage>
         creditUsed = false; // 크레딧 반환됨
       }
 
+      // 빈 단어장이 생성되지 않도록 _currentDay 초기화
+      _currentDay = _prevDay;
+
+      // 빈 단어장 정리 함수 호출
+      _cleanUpEmptyDayCollection();
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('추출된 모든 단어가 이미 저장되어 있습니다.'),
@@ -695,6 +707,11 @@ class _HomePageState extends State<HomePage>
             await _purchaseService.addUsages(1);
             creditUsed = false; // 크레딧 반환됨
           }
+
+          _currentDay = _prevDay;
+
+          // 빈 단어장 정리
+          _cleanUpEmptyDayCollection();
 
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -918,6 +935,29 @@ class _HomePageState extends State<HomePage>
     }
   }
 
+  // 빈 단어장 정리 함수
+  Future<void> _cleanUpEmptyDayCollection() async {
+    // 현재 단어장 목록을 확인
+    Map<String, List<WordEntry>> currentCollections = Map.from(_dayCollections);
+
+    // 빈 단어장 찾기
+    List<String> emptyCollections = [];
+    currentCollections.forEach((day, words) {
+      if (words.isEmpty) {
+        emptyCollections.add(day);
+      }
+    });
+
+    // 빈 단어장 삭제
+    for (String day in emptyCollections) {
+      await _storageService.deleteDayCollection(day);
+      setState(() {
+        _dayCollections.remove(day);
+      });
+      print('빈 단어장 삭제: $day');
+    }
+  }
+
 // 2. 단어장 선택 다이얼로그 수정 - 기존 단어장에 추가 옵션 제공
   Future<String?> _showDaySelectionDialog() async {
     // 다음 DAY 번호 계산 함수 사용
@@ -1006,9 +1046,9 @@ class _HomePageState extends State<HomePage>
     await _storageService.incrementReviewCount(wordText);
   }
 
-  // 0번 탭으로 이동
+  // 1번 탭으로 이동
   void _navigateToCaptureTab() {
-    _tabController.animateTo(0);
+    _tabController.animateTo(1);
   }
 
   void _clearImages() {
@@ -1026,9 +1066,6 @@ class _HomePageState extends State<HomePage>
     return allWords;
   }
 
-// lib/screens/home_screen.dart 파일의 Scaffold 부분 수정
-// TabBar 대신 BottomNavigationBar 사용
-
   @override
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
@@ -1039,363 +1076,465 @@ class _HomePageState extends State<HomePage>
           setState(() => _isFabExpanded = false);
         }
       },
-      child: Stack(
-        children: [
-          Scaffold(
-            // FloatingActionButton 추가
-            floatingActionButton: _buildFAB(isDarkMode),
-            floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
-            appBar: AppBar(
-              elevation: 0,
-              backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
-              // Shop 아이콘을 좌측에 배치하기 위한 leading 위젯 설정
-              leading: IconButton(
+      child: Stack(children: [
+        Scaffold(
+          // FloatingActionButton 추가
+          floatingActionButton:
+              _tabController.index == 1 ? _buildFAB(isDarkMode) : null,
+          floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+          appBar: AppBar(
+            elevation: 0,
+            backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
+            // Shop 아이콘을 좌측에 배치하기 위한 leading 위젯 설정
+            leading: IconButton(
+              icon: Icon(
+                Icons.shopping_cart,
+                color:
+                    isDarkMode ? Colors.amber.shade300 : Colors.amber.shade800,
+              ),
+              onPressed: () {
+                // 인앱결제 화면으로 이동
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => PurchaseScreen()),
+                ).then((_) {
+                  // 돌아왔을 때 사용량 갱신
+                  _loadRemainingUsages();
+                });
+              },
+              tooltip: '충전하기',
+            ),
+            title: GestureDetector(
+              onTap: () {
+                // 현재 시간 가져오기
+                final now = DateTime.now();
+
+                if (_lastTapTime == null ||
+                    now.difference(_lastTapTime!).inSeconds > 3) {
+                  _logoTapCount = 1;
+                } else {
+                  _logoTapCount++;
+                }
+
+                _lastTapTime = now;
+
+                if (_logoTapCount >= 15) {
+                  _logoTapCount = 0;
+                  _showAdminLogin();
+                }
+              },
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // 햄스터 아이콘 추가 (작은 이미지로 표시, 중앙 정렬)
+                  Container(
+                    width: 30,
+                    height: 30,
+                    child: Center(
+                      child: Text(
+                        '🐹', // 햄스터 이모지 사용
+                        style: TextStyle(fontSize: 18),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ),
+                  SizedBox(width: 8),
+                  Text(
+                    '찍어보카',
+                    style: TextStyle(
+                      color: isDarkMode ? Colors.white : Colors.black87,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 20,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              // 다크모드 토글 아이콘 추가
+              IconButton(
                 icon: Icon(
-                  Icons.shopping_cart,
+                  Provider.of<ThemeProvider>(context).isDarkMode
+                      ? Icons.light_mode
+                      : Icons.dark_mode,
                   color: isDarkMode
                       ? Colors.amber.shade300
                       : Colors.amber.shade800, // 햄스터 색상에 맞게 변경
                 ),
                 onPressed: () {
-                  // 인앱결제 화면으로 이동
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => PurchaseScreen()),
-                  ).then((_) {
-                    // 돌아왔을 때 사용량 갱신
-                    _loadRemainingUsages();
+                  // 테마 전환
+                  Provider.of<ThemeProvider>(context, listen: false)
+                      .toggleTheme();
+                },
+                tooltip: '테마 변경',
+              ),
+            ],
+          ), // 메인 컨텐츠 영역 - TabBarView 유지
+          body: TabBarView(
+            controller: _tabController,
+            physics: _isProcessing
+                ? NeverScrollableScrollPhysics() // 이미지 처리 중일 때 스와이프 비활성화
+                : AlwaysScrollableScrollPhysics(), // 그 외에는 정상 작동
+            // FloatingActionButton 추가
+            children: [
+              // 홈 대시보드 탭 (추가됨)
+              HomeTab(
+                dayCollections: _dayCollections,
+                currentDay: _currentDay,
+                onDayChanged: (String day) {
+                  setState(() {
+                    _currentDay = day;
                   });
                 },
-                tooltip: '충전하기',
-              ),
-              title: GestureDetector(
-                onTap: () {
-                  // 현재 시간 가져오기
-                  final now = DateTime.now();
-
-                  if (_lastTapTime == null ||
-                      now.difference(_lastTapTime!).inSeconds > 3) {
-                    _logoTapCount = 1;
-                  } else {
-                    _logoTapCount++;
-                  }
-
-                  _lastTapTime = now;
-
-                  if (_logoTapCount >= 15) {
-                    _logoTapCount = 0;
-                    _showAdminLogin();
-                  }
+                navigateToWordTab: () {
+                  _tabController.animateTo(1);
                 },
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // 햄스터 아이콘 추가 (작은 이미지로 표시, 중앙 정렬)
-                    Container(
-                      width: 30,
-                      height: 30,
-                      child: Center(
-                        child: Text(
-                          '🐹', // 햄스터 이모지 사용
-                          style: TextStyle(fontSize: 18),
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                    ),
-                    SizedBox(width: 8),
-                    Text(
-                      '찍어보카',
-                      style: TextStyle(
-                        color: isDarkMode ? Colors.white : Colors.black87,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 20,
-                      ),
-                    ),
-                  ],
-                ),
+                onAddWord: () {
+                  _tabController.animateTo(1);
+                  setState(() => _isFabExpanded = true);
+                },
               ),
-              actions: [
-                // 다크모드 토글 아이콘 추가
-                IconButton(
-                  icon: Icon(
-                    Provider.of<ThemeProvider>(context).isDarkMode
-                        ? Icons.light_mode
-                        : Icons.dark_mode,
-                    color: isDarkMode
-                        ? Colors.amber.shade300
-                        : Colors.amber.shade800, // 햄스터 색상에 맞게 변경
-                  ),
-                  onPressed: () {
-                    // 테마 전환
-                    Provider.of<ThemeProvider>(context, listen: false)
-                        .toggleTheme();
-                  },
-                  tooltip: '테마 변경',
-                ),
-              ],
-            ), // 메인 컨텐츠 영역 - TabBarView 유지
-            body: TabBarView(
-              controller: _tabController,
-              physics: _isProcessing
-                  ? NeverScrollableScrollPhysics() // 이미지 처리 중일 때 스와이프 비활성화
-                  : AlwaysScrollableScrollPhysics(), // 그 외에는 정상 작동
-              // FloatingActionButton 추가
-              children: [
-                // 홈 대시보드 탭 (추가됨)
-                HomeTab(
-                  dayCollections: _dayCollections,
-                  currentDay: _currentDay,
-                  onDayChanged: (String day) {
-                    setState(() {
-                      _currentDay = day;
-                    });
-                  },
-                  navigateToWordTab: () {
-                    _tabController.animateTo(1);
-                  },
-                  onAddWord: () {
-                    setState(() => _isFabExpanded = true);
-                  },
-                ),
 
-                WordListTab(
-                  dayCollections: _dayCollections,
-                  currentDay: _currentDay,
-                  onDayChanged: (String day) {
-                    setState(() {
-                      _currentDay = day;
-                    });
-                  },
-                  navigateToCaptureTab: () {
-                    _tabController.animateTo(0);
-                  },
-                  onSpeakWord: _speakWord,
-                  storageService: _storageService,
-                ),
+              WordListTab(
+                dayCollections: _dayCollections,
+                currentDay: _currentDay,
+                onDayChanged: (String day) {
+                  setState(() {
+                    _currentDay = day;
+                  });
+                },
+                navigateToCaptureTab: () {
+                  _tabController.animateTo(0);
+                },
+                onSpeakWord: _speakWord,
+                storageService: _storageService,
+              ),
 
-                FlashCardTab(
-                  words: _dayCollections[_currentDay] ?? [],
-                  onSpeakWord: _speakWord,
-                  onReviewComplete: _incrementReviewCount,
-                  dayCollections: _dayCollections,
-                  currentDay: _currentDay,
-                  onDayChanged: _setCurrentDay,
-                  navigateToCaptureTab: _navigateToCaptureTab,
-                ),
+              FlashCardTab(
+                words: _dayCollections[_currentDay] ?? [],
+                onSpeakWord: _speakWord,
+                onReviewComplete: _incrementReviewCount,
+                dayCollections: _dayCollections,
+                currentDay: _currentDay,
+                onDayChanged: _setCurrentDay,
+                navigateToCaptureTab: _navigateToCaptureTab,
+              ),
 
-                QuizTab(
-                  words: _dayCollections[_currentDay] ?? [],
-                  allWords: _getAllWords(),
-                  onSpeakWord: _speakWord,
-                  dayCollections: _dayCollections,
-                  currentDay: _currentDay,
-                  onDayChanged: _setCurrentDay,
-                  navigateToCaptureTab: _navigateToCaptureTab,
+              QuizTab(
+                words: _dayCollections[_currentDay] ?? [],
+                allWords: _getAllWords(),
+                onSpeakWord: _speakWord,
+                dayCollections: _dayCollections,
+                currentDay: _currentDay,
+                onDayChanged: _setCurrentDay,
+                navigateToCaptureTab: _navigateToCaptureTab,
+              ),
+            ],
+          ),
+          bottomNavigationBar: Container(
+            decoration: BoxDecoration(
+              color: isDarkMode ? Color(0xFF1E1E1E) : Colors.white,
+              boxShadow: const [
+                BoxShadow(
+                  color: Colors.black12,
+                  blurRadius: 4,
+                  offset: Offset(0, -1),
                 ),
               ],
             ),
-            bottomNavigationBar: Container(
-              decoration: BoxDecoration(
-                color: isDarkMode ? Color(0xFF1E1E1E) : Colors.white,
-                boxShadow: const [
-                  BoxShadow(
-                    color: Colors.black12,
-                    blurRadius: 4,
-                    offset: Offset(0, -1),
+            child: SafeArea(
+              child: BottomNavigationBar(
+                currentIndex: _tabController.index,
+                onTap: (index) {
+                  if (_isProcessing && index != 0) {
+                    // 이미지 처리 중이고 첫 번째 탭이 아닌 다른 탭 선택 시
+                    if (!_hasShownProcessingWarning) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('이미지 처리 중에는 탭을 변경할 수 없습니다.'),
+                          behavior: SnackBarBehavior.floating,
+                          duration: Duration(seconds: 2),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                      );
+                      _hasShownProcessingWarning = true;
+                    }
+                  } else {
+                    _tabController.animateTo(index);
+                  }
+                },
+                type: BottomNavigationBarType.fixed, // 4개 이상 항목이 있을 때 필요
+                backgroundColor: isDarkMode ? Color(0xFF1E1E1E) : Colors.white,
+                selectedItemColor: isDarkMode
+                    ? Colors.amber.shade300
+                    : Colors.amber.shade700, // 햄스터 색상으로 변경
+                unselectedItemColor:
+                    isDarkMode ? Colors.grey.shade600 : Colors.grey.shade700,
+                selectedLabelStyle:
+                    TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                unselectedLabelStyle: TextStyle(fontSize: 12),
+                elevation: 0, // 그림자는 위 Container에서 처리
+                items: const [
+                  BottomNavigationBarItem(
+                    icon: Icon(Icons.home),
+                    label: '홈',
+                  ),
+                  BottomNavigationBarItem(
+                    icon: Icon(Icons.book),
+                    label: '단어장',
+                  ),
+                  BottomNavigationBarItem(
+                    icon: Icon(Icons.flip_to_front), // 더 적절한 아이콘으로 변경
+                    label: '플래시카드',
+                  ),
+                  BottomNavigationBarItem(
+                    icon: Icon(Icons.psychology), // 더 적절한 아이콘으로 변경
+                    label: '퀴즈',
                   ),
                 ],
               ),
-              child: SafeArea(
-                child: BottomNavigationBar(
-                  currentIndex: _tabController.index,
-                  onTap: (index) {
-                    if (_isProcessing && index != 0) {
-                      // 이미지 처리 중이고 첫 번째 탭이 아닌 다른 탭 선택 시
-                      if (!_hasShownProcessingWarning) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('이미지 처리 중에는 탭을 변경할 수 없습니다.'),
-                            behavior: SnackBarBehavior.floating,
-                            duration: Duration(seconds: 2),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                          ),
-                        );
-                        _hasShownProcessingWarning = true;
-                      }
-                    } else {
-                      _tabController.animateTo(index);
-                    }
-                  },
-                  type: BottomNavigationBarType.fixed, // 4개 이상 항목이 있을 때 필요
-                  backgroundColor:
-                      isDarkMode ? Color(0xFF1E1E1E) : Colors.white,
-                  selectedItemColor: isDarkMode
-                      ? Colors.amber.shade300
-                      : Colors.amber.shade700, // 햄스터 색상으로 변경
-                  unselectedItemColor:
-                      isDarkMode ? Colors.grey.shade600 : Colors.grey.shade700,
-                  selectedLabelStyle:
-                      TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
-                  unselectedLabelStyle: TextStyle(fontSize: 12),
-                  elevation: 0, // 그림자는 위 Container에서 처리
-                  items: const [
-                    BottomNavigationBarItem(
-                      icon: Icon(Icons.home),
-                      label: '홈',
-                    ),
-                    BottomNavigationBarItem(
-                      icon: Icon(Icons.book),
-                      label: '단어장',
-                    ),
-                    BottomNavigationBarItem(
-                      icon: Icon(Icons.flip_to_front), // 더 적절한 아이콘으로 변경
-                      label: '플래시카드',
-                    ),
-                    BottomNavigationBarItem(
-                      icon: Icon(Icons.psychology), // 더 적절한 아이콘으로 변경
-                      label: '퀴즈',
-                    ),
-                  ],
-                ),
-              ),
             ),
           ),
-          // 이미지 처리 중일 때 표시할 오버레이
-          if (_isProcessing)
-            Positioned.fill(
-              child: Container(
-                color: Colors.black.withOpacity(0.7),
-                child: Center(
+        ),
+        // 이미지 처리 중일 때 표시할 오버레이
+        if (_isProcessing)
+          Positioned.fill(
+            child: Container(
+              color: Colors.black.withOpacity(0.85),
+              child: Center(
+                child: Material(
+                  type: MaterialType.transparency, // 투명 배경 유지
                   child: Container(
-                    padding: EdgeInsets.all(24),
                     width: MediaQuery.of(context).size.width * 0.85,
+                    padding: EdgeInsets.all(28),
                     decoration: BoxDecoration(
                       color: isDarkMode ? Color(0xFF2A2A2A) : Colors.white,
-                      borderRadius: BorderRadius.circular(20),
+                      borderRadius: BorderRadius.circular(24),
                       boxShadow: [
                         BoxShadow(
                           color: Colors.black38,
-                          blurRadius: 15,
+                          blurRadius: 20,
                           offset: Offset(0, 10),
+                          spreadRadius: 5,
                         ),
                       ],
+                      border: Border.all(
+                        color: isDarkMode
+                            ? Colors.amber.shade700.withOpacity(0.6)
+                            : Colors.amber.shade300,
+                        width: 2,
+                      ),
                     ),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        // 햄스터 이모지 (앱 아이덴티티 유지)
-                        Text(
-                          '🐹',
-                          style: TextStyle(fontSize: 36),
+                        // 상단 햄스터 아이콘
+                        Container(
+                          width: 80,
+                          height: 80,
+                          decoration: BoxDecoration(
+                            color: isDarkMode
+                                ? Colors.amber.shade900.withOpacity(0.3)
+                                : Colors.amber.shade100,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Center(
+                            child: Text(
+                              '🐹',
+                              style: TextStyle(fontSize: 48),
+                            ),
+                          ),
                         ),
-                        SizedBox(height: 16),
+                        SizedBox(height: 20),
 
                         // 상태 메시지
                         Text(
-                          '이미지에서 단어를 추출하는 중...',
+                          '단어 추출 중...',
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
-                            fontSize: 18,
+                            fontSize: 22,
+                            color: isDarkMode
+                                ? Colors.amber.shade300
+                                : Colors.amber.shade700,
                           ),
                         ),
-                        SizedBox(height: 24),
+                        SizedBox(height: 8),
+
+                        Text(
+                          '이미지에서 영단어를 찾고 있어요',
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: isDarkMode
+                                ? Colors.grey.shade300
+                                : Colors.grey.shade800,
+                          ),
+                        ),
+                        SizedBox(height: 28),
 
                         // 진행 상태 표시
                         if (_showDetailedProgress) ...[
-                          LinearProgressIndicator(
-                            value: _processedImages / _totalImagesToProcess,
-                            backgroundColor: isDarkMode
-                                ? Colors.grey.shade800
-                                : Colors.grey.shade200,
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                              isDarkMode
-                                  ? Colors.amber.shade300
-                                  : Colors.amber.shade600,
-                            ),
-                            minHeight: 8,
-                          ),
-                          SizedBox(height: 16),
-                          Text(
-                            '이미지 처리 중: $_processedImages / $_totalImagesToProcess',
-                            style: TextStyle(fontSize: 14),
-                          ),
-                          if (_extractedWordsCount > 0) ...[
-                            SizedBox(height: 8),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  Icons.check_circle_outline,
+                          Container(
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(12),
+                              boxShadow: [
+                                BoxShadow(
                                   color: isDarkMode
-                                      ? Colors.green.shade300
-                                      : Colors.green.shade700,
-                                  size: 16,
-                                ),
-                                SizedBox(width: 8),
-                                Text(
-                                  '추출된 단어: $_extractedWordsCount개',
-                                  style: TextStyle(
-                                    color: isDarkMode
-                                        ? Colors.green.shade300
-                                        : Colors.green.shade700,
-                                    fontWeight: FontWeight.w500,
-                                  ),
+                                      ? Colors.black.withOpacity(0.5)
+                                      : Colors.grey.withOpacity(0.3),
+                                  blurRadius: 8,
+                                  offset: Offset(0, 3),
                                 ),
                               ],
                             ),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(12),
+                              child: LinearProgressIndicator(
+                                value: _processedImages / _totalImagesToProcess,
+                                backgroundColor: isDarkMode
+                                    ? Colors.grey.shade800
+                                    : Colors.grey.shade200,
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  isDarkMode
+                                      ? Colors.amber.shade500
+                                      : Colors.amber.shade600,
+                                ),
+                                minHeight: 10,
+                              ),
+                            ),
+                          ),
+                          SizedBox(height: 16),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Container(
+                                padding: EdgeInsets.symmetric(
+                                    horizontal: 12, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: isDarkMode
+                                      ? Colors.grey.shade900
+                                      : Colors.grey.shade100,
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                child: Text(
+                                  '이미지 $_processedImages / $_totalImagesToProcess',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500,
+                                    color: isDarkMode
+                                        ? Colors.grey.shade300
+                                        : Colors.grey.shade800,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          if (_extractedWordsCount > 0) ...[
+                            SizedBox(height: 16),
+                            Container(
+                              padding: EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: isDarkMode
+                                    ? Colors.green.shade900.withOpacity(0.4)
+                                    : Colors.green.shade50,
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(
+                                  color: isDarkMode
+                                      ? Colors.green.shade700
+                                      : Colors.green.shade300,
+                                  width: 1,
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.check_circle,
+                                    color: isDarkMode
+                                        ? Colors.green.shade300
+                                        : Colors.green.shade600,
+                                    size: 20,
+                                  ),
+                                  SizedBox(width: 8),
+                                  Text(
+                                    '발견된 단어: $_extractedWordsCount개',
+                                    style: TextStyle(
+                                      color: isDarkMode
+                                          ? Colors.green.shade300
+                                          : Colors.green.shade700,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
                           ],
                         ] else ...[
-                          SizedBox(
-                            width: 40,
-                            height: 40,
+                          Container(
+                            width: 60,
+                            height: 60,
+                            padding: EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: isDarkMode
+                                  ? Colors.grey.shade800
+                                  : Colors.grey.shade100,
+                              shape: BoxShape.circle,
+                            ),
                             child: CircularProgressIndicator(
-                              strokeWidth: 4,
+                              strokeWidth: 3,
                               valueColor: AlwaysStoppedAnimation<Color>(
                                 isDarkMode
-                                    ? Colors.amber.shade300
+                                    ? Colors.amber.shade400
                                     : Colors.amber.shade600,
                               ),
                             ),
                           ),
                           SizedBox(height: 16),
-                          Text(
-                            '잠시만 기다려주세요...',
-                            style: TextStyle(fontSize: 14),
-                          ),
                         ],
-                        SizedBox(height: 16),
+
+                        SizedBox(height: 24),
 
                         // 안내 문구
                         Container(
-                          padding: EdgeInsets.all(12),
+                          padding: EdgeInsets.all(16),
                           decoration: BoxDecoration(
                             color: isDarkMode
-                                ? Colors.amber.shade900.withOpacity(0.3)
+                                ? Colors.amber.shade900.withOpacity(0.2)
                                 : Colors.amber.shade50,
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(16),
                             border: Border.all(
                               color: isDarkMode
-                                  ? Colors.amber.shade800
+                                  ? Colors.amber.shade800.withOpacity(0.5)
                                   : Colors.amber.shade200,
+                              width: 1.5,
                             ),
                           ),
                           child: Row(
                             children: [
-                              Icon(
-                                Icons.info_outline,
-                                color: isDarkMode
-                                    ? Colors.amber.shade300
-                                    : Colors.amber.shade800,
-                                size: 16,
+                              Container(
+                                padding: EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: isDarkMode
+                                      ? Colors.amber.shade900.withOpacity(0.4)
+                                      : Colors.amber.shade100,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(
+                                  Icons.lightbulb_outline,
+                                  color: isDarkMode
+                                      ? Colors.amber.shade300
+                                      : Colors.amber.shade800,
+                                  size: 18,
+                                ),
                               ),
-                              SizedBox(width: 8),
+                              SizedBox(width: 12),
                               Expanded(
                                 child: Text(
-                                  '단어 추출이 완료되면 저장 화면이 표시됩니다.',
+                                  '단어 추출이 완료되면 단어 저장 화면이 나타납니다.',
                                   style: TextStyle(
-                                    fontSize: 12,
+                                    fontSize: 14,
                                     color: isDarkMode
                                         ? Colors.amber.shade300
                                         : Colors.amber.shade800,
@@ -1411,8 +1550,8 @@ class _HomePageState extends State<HomePage>
                 ),
               ),
             ),
-        ],
-      ),
+          ),
+      ]),
     );
   }
 

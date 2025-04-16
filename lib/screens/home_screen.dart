@@ -1051,12 +1051,6 @@ class _HomePageState extends State<HomePage>
     _tabController.animateTo(1);
   }
 
-  void _clearImages() {
-    setState(() {
-      _batchImages = [];
-    });
-  }
-
   // 전체 단어 목록 가져오기
   List<WordEntry> _getAllWords() {
     List<WordEntry> allWords = [];

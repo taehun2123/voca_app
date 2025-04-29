@@ -209,7 +209,7 @@ class _SmartStudyScreenState extends State<SmartStudyScreen>
         backgroundColor:
             isDarkMode ? Colors.grey.shade900 : Colors.white,
         bottom: PreferredSize(
-          preferredSize: Size.fromHeight(62),
+          preferredSize: Size.fromHeight(62), // 높이 약간 줄임
           child: Container(
             decoration: BoxDecoration(
               border: Border(
@@ -233,7 +233,7 @@ class _SmartStudyScreenState extends State<SmartStudyScreen>
               unselectedLabelColor: isDarkMode
                   ? Colors.grey.shade500
                   : Colors.grey.shade500,
-              labelPadding: EdgeInsets.symmetric(horizontal: 0, vertical: 4),
+              labelPadding: EdgeInsets.symmetric(horizontal: 0, vertical: 0), // vertical 패딩 제거
               tabs: [
                 _buildTab(
                   icon: Icons.warning_amber_rounded,
@@ -283,28 +283,18 @@ class _SmartStudyScreenState extends State<SmartStudyScreen>
         children: [
           Icon(
             icon,
-            size: 26,
-            color: null, // TabBar의 labelColor/unselectedLabelColor가 적용됨
+            size: 20, // 26에서 22로 크기 줄임
+            color: null, 
           ),
-          SizedBox(height: 8),
+          SizedBox(height: 2), // 8에서 2로 간격 줄임
           Text(
-            label,
+            '$label ($count)',
             style: TextStyle(
-              fontSize: 13.5,
+              fontSize: 11, // 13.5에서 12로 크기 줄임
               fontWeight: FontWeight.w600,
             ),
           ),
-          SizedBox(height: 3),
-          Text(
-            '($count)',
-            style: TextStyle(
-              fontSize: 11,
-              color: isDarkMode
-                  ? Colors.grey.shade500
-                  : Colors.grey.shade500,
-              fontWeight: FontWeight.w400,
-            ),
-          ),
+          SizedBox(height: 2), // 3에서 1로 간격 줄임
         ],
       ),
     );

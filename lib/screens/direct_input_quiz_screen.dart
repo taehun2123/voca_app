@@ -44,8 +44,9 @@ class _DirectInputQuizScreenState extends State<DirectInputQuizScreen> {
   @override
   void initState() {
     super.initState();
-    _prepareQuiz();
-  }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _prepareQuiz();
+    });  }
 
   @override
   void dispose() {
@@ -742,11 +743,11 @@ class _DirectInputQuizScreenState extends State<DirectInputQuizScreen> {
   Widget _buildResultsScreen() {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
-    return SingleChildScrollView(
+    return DefaultTabController(
+      length: 2,      
       child: Padding(
         padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: ListView( // SingleChildScrollView -> ListView로 변경
           children: [
             // 결과 헤더
             Text(

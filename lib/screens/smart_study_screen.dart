@@ -56,74 +56,159 @@ class _SmartStudyScreenState extends State<SmartStudyScreen>
     // 콘솔에 로그 추가
     print('스마트 학습 화면: 퀴즈 결과 전달: ${word.word}, 정답: $isCorrect');
   }
+// _prepareStudyData 메서드 수정
+void _prepareStudyData() {
+  setState(() {
+    _isLoading = true;
+  });
 
-  // 학습 데이터 준비
-  void _prepareStudyData() {
-    setState(() {
-      _isLoading = true;
-    });
+  // 1. 어려운 단어 (난이도 높거나 정답률 낮은 단어)
+  _difficultWords = widget.words.where((word) {
+    // 난이도가 높거나 정답률이 낮은 단어 선택
+    bool isHighDifficulty = word.difficulty >= 0.7;
+    bool isLowCorrectRate = word.quizAttempts >= 2 &&
+        (word.quizCorrect / word.quizAttempts) < 0.5;
+    return isHighDifficulty || isLowCorrectRate;
+  }).toList();
 
-    // 1. 어려운 단어 (난이도 높거나 정답률 낮은 단어)
-    _difficultWords = widget.words.where((word) {
-      // 난이도가 높거나 정답률이 낮은 단어 선택
-      bool isHighDifficulty = word.difficulty >= 0.7;
-      bool isLowCorrectRate = word.quizAttempts >= 2 &&
-          (word.quizCorrect / word.quizAttempts) < 0.5;
-      return isHighDifficulty || isLowCorrectRate;
-    }).toList();
+  // 2. 새 단어 (복습 횟수 적거나 퀴즈 시도 적은 단어)
+  _newWords = widget.words.where((word) {
+    return word.reviewCount < 3 || word.quizAttempts < 2;
+  }).toList();
 
-    // 2. 새 단어 (복습 횟수 적거나 퀴즈 시도 적은 단어)
-    _newWords = widget.words.where((word) {
-      return word.reviewCount < 3 || word.quizAttempts < 2;
-    }).toList();
+  // 3. 복습 필요한 단어 (일정 시간 지난 단어들)
+  _reviewDueWords = widget.words.where((word) {
+    // 이미 암기된 단어들 중에서 일정 기간 지난 단어들
+    // 스페이싱 효과(Spacing Effect)를 활용한 복습 대상 선정
+    if (!word.isMemorized) return false;
 
-    // 3. 복습 필요한 단어 (일정 시간 지난 단어들)
-    _reviewDueWords = widget.words.where((word) {
-      // 이미 암기된 단어들 중에서 일정 기간 지난 단어들
-      // 스페이싱 효과(Spacing Effect)를 활용한 복습 대상 선정
-      if (!word.isMemorized) return false;
+    final now = DateTime.now();
+    final daysSinceCreated = now.difference(word.createdAt).inDays;
 
-      final now = DateTime.now();
-      final daysSinceCreated = now.difference(word.createdAt).inDays;
+    // 복습 간격 계산 (간단한 예시: 복습 횟수에 따라 간격 증가)
+    // 복습 횟수 0-1: 1일, 2-3: 3일, 4-5: 7일, 6+: 14일
+    int reviewInterval;
+    if (word.reviewCount < 2) {
+      reviewInterval = 1;
+    } else if (word.reviewCount < 4) {
+      reviewInterval = 3;
+    } else if (word.reviewCount < 6) {
+      reviewInterval = 7;
+    } else {
+      reviewInterval = 14;
+    }
 
-      // 복습 간격 계산 (간단한 예시: 복습 횟수에 따라 간격 증가)
-      // 복습 횟수 0-1: 1일, 2-3: 3일, 4-5: 7일, 6+: 14일
-      int reviewInterval;
-      if (word.reviewCount < 2) {
-        reviewInterval = 1;
-      } else if (word.reviewCount < 4) {
-        reviewInterval = 3;
-      } else if (word.reviewCount < 6) {
-        reviewInterval = 7;
-      } else {
-        reviewInterval = 14;
-      }
+    // 마지막 복습일로부터 복습 간격 이상 지났는지 확인
+    return daysSinceCreated >= reviewInterval;
+  }).toList();
 
-      // 마지막 복습일로부터 복습 간격 이상 지났는지 확인
-      return daysSinceCreated >= reviewInterval;
-    }).toList();
+  // 목록 정렬 및 중복 제거
+  _difficultWords.sort((a, b) => b.difficulty.compareTo(a.difficulty));
+  _newWords.sort((a, b) => a.reviewCount.compareTo(b.reviewCount));
 
-    // 목록 정렬 및 중복 제거
-    _difficultWords.sort((a, b) => b.difficulty.compareTo(a.difficulty));
-    _newWords.sort((a, b) => a.reviewCount.compareTo(b.reviewCount));
+  // 중복 제거: 어려운 단어가 새 단어에도 포함된 경우 새 단어에서 제거
+  _newWords = _newWords
+      .where((word) =>
+          !_difficultWords.any((difficult) => difficult.word == word.word))
+      .toList();
 
-    // 중복 제거: 어려운 단어가 새 단어에도 포함된 경우 새 단어에서 제거
-    _newWords = _newWords
-        .where((word) =>
-            !_difficultWords.any((difficult) => difficult.word == word.word))
-        .toList();
+  // 복습 단어에서도 중복 제거
+  _reviewDueWords = _reviewDueWords
+      .where((word) =>
+          !_difficultWords.any((difficult) => difficult.word == word.word) &&
+          !_newWords.any((newWord) => newWord.word == word.word))
+      .toList();
 
-    // 복습 단어에서도 중복 제거
-    _reviewDueWords = _reviewDueWords
-        .where((word) =>
-            !_difficultWords.any((difficult) => difficult.word == word.word) &&
-            !_newWords.any((newWord) => newWord.word == word.word))
-        .toList();
+  setState(() {
+    _isLoading = false;
+  });
+}
 
-    setState(() {
-      _isLoading = false;
-    });
+// 수정된 _buildEmptyState 메서드 - 복습 관련 설명 추가
+Widget _buildEmptyState(MaterialColor color) {
+  final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
+  String message;
+  String submessage = ""; // 추가 설명을 위한 새 변수
+  IconData icon;
+
+  if (color == Colors.red) {
+    message = '어려운 단어가 없습니다!';
+    submessage = '어려운 단어는 퀴즈에서 정답률이 50% 미만이거나 난이도가 높은 단어입니다.';
+    icon = Icons.emoji_events;
+  } else if (color == Colors.blue) {
+    message = '새로운 단어가 없습니다!';
+    submessage = '새 단어는 복습 횟수가 3회 미만이거나 퀴즈 시도가 2회 미만인 단어입니다.';
+    icon = Icons.thumb_up;
+  } else {
+    message = '복습할 단어가 없습니다!';
+    submessage = '복습 단어는 암기 완료 표시된 단어 중 일정 기간이 지난 단어들입니다.\n'
+                '(복습 횟수 0-1: 1일 후, 2-3: 3일 후, 4-5: 7일 후, 6+: 14일 후)';
+    icon = Icons.check_circle;
   }
+
+  return Center(
+    child: Padding(
+      padding: const EdgeInsets.all(24.0),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            icon,
+            size: 80,
+            color: isDarkMode ? color.shade300 : color.shade200,
+          ),
+          SizedBox(height: 24),
+          Text(
+            message,
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: isDarkMode ? Colors.grey.shade300 : Colors.grey.shade700,
+            ),
+          ),
+          SizedBox(height: 16),
+          // 추가 설명 텍스트 추가
+          Container(
+            padding: EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: isDarkMode 
+                  ? Colors.grey.shade800 
+                  : Colors.grey.shade100,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: isDarkMode 
+                    ? color.shade800 
+                    : color.shade200,
+                width: 1,
+              ),
+            ),
+            child: Text(
+              submessage,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 14,
+                color: isDarkMode ? Colors.grey.shade300 : Colors.grey.shade700,
+                height: 1.5,
+              ),
+            ),
+          ),
+          SizedBox(height: 24),
+          ElevatedButton(
+            onPressed: _prepareStudyData,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: isDarkMode ? color.shade700 : color.shade600,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            child: Text('새로고침'),
+          ),
+        ],
+      ),
+    ),
+  );
+}
 
   @override
   Widget build(BuildContext context) {
@@ -247,57 +332,6 @@ class _SmartStudyScreenState extends State<SmartStudyScreen>
             ),
           );
         },
-      ),
-    );
-  }
-
-  Widget _buildEmptyState(MaterialColor color) {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-
-    String message;
-    IconData icon;
-
-    if (color == Colors.red) {
-      message = '어려운 단어가 없습니다!';
-      icon = Icons.emoji_events;
-    } else if (color == Colors.blue) {
-      message = '새로운 단어가 없습니다!';
-      icon = Icons.thumb_up;
-    } else {
-      message = '복습할 단어가 없습니다!';
-      icon = Icons.check_circle;
-    }
-
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            icon,
-            size: 80,
-            color: isDarkMode ? color.shade300 : color.shade200,
-          ),
-          SizedBox(height: 24),
-          Text(
-            message,
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: isDarkMode ? Colors.grey.shade300 : Colors.grey.shade700,
-            ),
-          ),
-          SizedBox(height: 16),
-          ElevatedButton(
-            onPressed: _prepareStudyData,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: isDarkMode ? color.shade700 : color.shade600,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-            child: Text('새로고침'),
-          ),
-        ],
       ),
     );
   }

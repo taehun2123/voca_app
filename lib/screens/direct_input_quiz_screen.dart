@@ -738,183 +738,181 @@ class _DirectInputQuizScreenState extends State<DirectInputQuizScreen> {
     );
   }
 
+// _buildResultsScreen 메서드 수정
   Widget _buildResultsScreen() {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        children: [
-          // 결과 헤더
-          Text(
-            '퀴즈 결과',
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: isDarkMode ? Colors.white : Colors.black87,
-            ),
-          ),
-          SizedBox(height: 8),
-
-          // 점수 정보
-          Container(
-            padding: EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: isDarkMode
-                  ? Colors.amber.shade900.withOpacity(0.3)
-                  : Colors.amber.shade50,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: isDarkMode
-                    ? Colors.amber.shade800.withOpacity(0.6)
-                    : Colors.amber.shade200,
+    return SingleChildScrollView(
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // 결과 헤더
+            Text(
+              '퀴즈 결과',
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: isDarkMode ? Colors.white : Colors.black87,
               ),
             ),
-            child: Column(
-              children: [
-                Text(
-                  '맞힌 문제 수',
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: isDarkMode
-                        ? Colors.amber.shade300
-                        : Colors.amber.shade700,
-                  ),
-                ),
-                SizedBox(height: 8),
-                Text(
-                  '${_quizWords.length - _wrongAnswers.length - _partiallyCorrectAnswers.length} / ${_quizWords.length}',
-                  style: TextStyle(
-                    fontSize: 32,
-                    fontWeight: FontWeight.bold,
-                    color: isDarkMode ? Colors.white : Colors.black87,
-                  ),
-                ),
-                SizedBox(height: 8),
-                Text(
-                  '정답률: ${((_quizWords.length - _wrongAnswers.length - _partiallyCorrectAnswers.length) / _quizWords.length * 100).toStringAsFixed(1)}%',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: isDarkMode
-                        ? Colors.grey.shade300
-                        : Colors.grey.shade700,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          SizedBox(height: 24),
+            SizedBox(height: 8),
 
-          // 틀린 단어 및 부분 정답 단어 목록
-          Expanded(
-            child: DefaultTabController(
-              length: 2,
+            // 점수 정보
+            Container(
+              padding: EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: isDarkMode
+                    ? Colors.amber.shade900.withOpacity(0.3)
+                    : Colors.amber.shade50,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: isDarkMode
+                      ? Colors.amber.shade800.withOpacity(0.6)
+                      : Colors.amber.shade200,
+                ),
+              ),
               child: Column(
                 children: [
-                  TabBar(
-                    tabs: [
-                      Tab(
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.cancel, size: 16),
-                            SizedBox(width: 4),
-                            Text('틀린 단어 (${_wrongAnswers.length})'),
-                          ],
-                        ),
-                      ),
-                      Tab(
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.remove_circle, size: 16),
-                            SizedBox(width: 4),
-                            Text('부분 정답 (${_partiallyCorrectAnswers.length})'),
-                          ],
-                        ),
-                      ),
-                    ],
-                    labelColor: isDarkMode
-                        ? Colors.amber.shade300
-                        : Colors.amber.shade700,
-                    unselectedLabelColor: isDarkMode
-                        ? Colors.grey.shade400
-                        : Colors.grey.shade600,
-                    indicatorColor: isDarkMode
-                        ? Colors.amber.shade300
-                        : Colors.amber.shade700,
+                  Text(
+                    '맞힌 문제 수',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: isDarkMode
+                          ? Colors.amber.shade300
+                          : Colors.amber.shade700,
+                    ),
                   ),
                   SizedBox(height: 8),
-                  Expanded(
-                    child: TabBarView(
-                      children: [
-                        // 틀린 단어 탭
-                        _wrongAnswers.isEmpty
-                            ? _buildEmptyTabContent('틀린 단어가 없습니다!')
-                            : _buildWrongWordsList(),
-
-                        // 부분 정답 탭
-                        _partiallyCorrectAnswers.isEmpty
-                            ? _buildEmptyTabContent('부분 정답 단어가 없습니다!')
-                            : _buildPartiallyCorrectWordsList(),
-                      ],
+                  Text(
+                    '${_quizWords.length - _wrongAnswers.length - _partiallyCorrectAnswers.length} / ${_quizWords.length}',
+                    style: TextStyle(
+                      fontSize: 32,
+                      fontWeight: FontWeight.bold,
+                      color: isDarkMode ? Colors.white : Colors.black87,
+                    ),
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    '정답률: ${((_quizWords.length - _wrongAnswers.length - _partiallyCorrectAnswers.length) / _quizWords.length * 100).toStringAsFixed(1)}%',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: isDarkMode
+                          ? Colors.grey.shade300
+                          : Colors.grey.shade700,
                     ),
                   ),
                 ],
               ),
             ),
-          ),
+            SizedBox(height: 24),
 
-          // 하단 버튼
-          SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: _restartQuiz,
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: isDarkMode
-                        ? Colors.amber.shade300
-                        : Colors.amber.shade700,
-                    side: BorderSide(
-                      color: isDarkMode
+            // 탭 컨트롤러로 변경
+            Container(
+              height: 50, // 탭바의 높이 지정
+              child: TabBar(
+                tabs: [
+                  Tab(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.cancel, size: 16),
+                        SizedBox(width: 4),
+                        Text('틀린 단어 (${_wrongAnswers.length})'),
+                      ],
+                    ),
+                  ),
+                  Tab(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.remove_circle, size: 16),
+                        SizedBox(width: 4),
+                        Text('부분 정답 (${_partiallyCorrectAnswers.length})'),
+                      ],
+                    ),
+                  ),
+                ],
+                labelColor:
+                    isDarkMode ? Colors.amber.shade300 : Colors.amber.shade700,
+                unselectedLabelColor:
+                    isDarkMode ? Colors.grey.shade400 : Colors.grey.shade600,
+                indicatorColor:
+                    isDarkMode ? Colors.amber.shade300 : Colors.amber.shade700,
+              ),
+            ),
+            SizedBox(height: 8),
+
+            // 탭 내용을 Container로 감싸서 높이 제한
+            Container(
+              height: 300, // 스크롤 가능한 영역의 높이 제한
+              child: TabBarView(
+                children: [
+                  // 틀린 단어 탭
+                  _wrongAnswers.isEmpty
+                      ? _buildEmptyTabContent('틀린 단어가 없습니다!')
+                      : _buildWrongWordsList(),
+
+                  // 부분 정답 탭
+                  _partiallyCorrectAnswers.isEmpty
+                      ? _buildEmptyTabContent('부분 정답 단어가 없습니다!')
+                      : _buildPartiallyCorrectWordsList(),
+                ],
+              ),
+            ),
+
+            // 하단 버튼
+            SizedBox(height: 24),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: _restartQuiz,
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: isDarkMode
+                          ? Colors.amber.shade300
+                          : Colors.amber.shade700,
+                      side: BorderSide(
+                        color: isDarkMode
+                            ? Colors.amber.shade700
+                            : Colors.amber.shade300,
+                      ),
+                      padding: EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: Text('전체 다시 시작'),
+                  ),
+                ),
+                SizedBox(width: 8),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: _wrongAnswers.isEmpty &&
+                            _partiallyCorrectAnswers.isEmpty
+                        ? null
+                        : _restartWithMistakes,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: isDarkMode
                           ? Colors.amber.shade700
-                          : Colors.amber.shade300,
+                          : Colors.amber.shade600,
+                      foregroundColor: Colors.white,
+                      padding: EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      disabledBackgroundColor: isDarkMode
+                          ? Colors.grey.shade700
+                          : Colors.grey.shade300,
                     ),
-                    padding: EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
+                    child: Text('틀린 문제만 다시'),
                   ),
-                  child: Text('전체 다시 시작'),
                 ),
-              ),
-              SizedBox(width: 8),
-              Expanded(
-                child: ElevatedButton(
-                  onPressed:
-                      _wrongAnswers.isEmpty && _partiallyCorrectAnswers.isEmpty
-                          ? null
-                          : _restartWithMistakes,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: isDarkMode
-                        ? Colors.amber.shade700
-                        : Colors.amber.shade600,
-                    foregroundColor: Colors.white,
-                    padding: EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    disabledBackgroundColor: isDarkMode
-                        ? Colors.grey.shade700
-                        : Colors.grey.shade300,
-                  ),
-                  child: Text('틀린 문제만 다시'),
-                ),
-              ),
-            ],
-          ),
-        ],
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

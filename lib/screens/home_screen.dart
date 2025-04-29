@@ -179,31 +179,57 @@ class _HomePageState extends State<HomePage>
     });
   }
 
-Future<void> _updateQuizResult(WordEntry word, bool isCorrect) async {
-  try {
-    // 퀴즈 결과 업데이트된 단어 생성
-    final updatedWord = word.updateQuizResult(isCorrect);
+  Future<void> _updateQuizResult(WordEntry word, bool isCorrect) async {
+    try {
+      // 퀴즈 결과 업데이트된 단어 생성
+      final updatedWord = word.updateQuizResult(isCorrect);
 
-    // 저장소에 업데이트
-    await _storageService.updateQuizResult(word.word, isCorrect);
+      // 저장소에 업데이트
+      await _storageService.updateQuizResult(word.word, isCorrect);
 
-    // 메모리에서도 업데이트
-    setState(() {
-      // 단어장 별로 단어 찾아서 업데이트
-      for (final dayName in _dayCollections.keys) {
-        final wordIndex = _dayCollections[dayName]?.indexWhere((w) => w.word == word.word);
-        if (wordIndex != null && wordIndex >= 0) {
-          _dayCollections[dayName]![wordIndex] = updatedWord;
-          break; // 단어를 찾았으므로 반복 중단
+      // 메모리에서도 업데이트
+      setState(() {
+        // 단어장 별로 단어 찾아서 업데이트
+        bool wordUpdated = false;
+        for (final dayName in _dayCollections.keys) {
+          final wordIndex =
+              _dayCollections[dayName]?.indexWhere((w) => w.word == word.word);
+          if (wordIndex != null && wordIndex >= 0) {
+            _dayCollections[dayName]![wordIndex] = updatedWord;
+            break; // 단어를 찾았으므로 반복 중단
+          }
         }
-      }
-    });
+        if (!wordUpdated) {
+          print('퀴즈 결과 업데이트: 메모리에서 단어 "${word.word}"를 찾을 수 없습니다.');
+        }
+      });
 
-    print('퀴즈 결과 업데이트 완료: ${word.word} (정답: $isCorrect, 난이도: ${updatedWord.difficulty})');
-  } catch (e) {
-    print('퀴즈 결과 업데이트 중 오류: $e');
+      print(
+          '퀴즈 결과 업데이트 완료: ${word.word} (정답: $isCorrect, 난이도: ${updatedWord.difficulty})');
+      // 단어의 난이도가 높아지면(틀린 경우) 사용자에게 알림
+      if (!isCorrect && updatedWord.difficulty > 0.7) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content:
+                Text('🐹 "${word.word}"가 어려운 단어로 등록되었습니다. 스마트 학습에서 복습해보세요!'),
+            behavior: SnackBarBehavior.floating,
+            duration: Duration(seconds: 3),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+            action: SnackBarAction(
+              label: '스마트 학습',
+              onPressed: () {
+                _tabController.animateTo(2); // 스마트 학습 탭으로 이동
+              },
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      print('퀴즈 결과 업데이트 중 오류: $e');
+    }
   }
-}
 
 // 단어 암기 상태 업데이트 메서드 (기존 _updateMemorizedStatus 메서드 수정 또는 추가)
   Future<void> _updateWordMemorizedStatus(WordEntry word) async {
@@ -1313,9 +1339,8 @@ Future<void> _updateQuizResult(WordEntry word, bool isCorrect) async {
                         backgroundColor: isDarkMode
                             ? Colors.amber.shade300
                             : Colors.amber.shade700,
-                        foregroundColor: isDarkMode
-                            ? Colors.black
-                            : Colors.white, // 텍스트 색상  
+                        foregroundColor:
+                            isDarkMode ? Colors.black : Colors.white, // 텍스트 색상
                       ),
                       child: Text('시작하기'),
                     ),
@@ -1341,6 +1366,7 @@ Future<void> _updateQuizResult(WordEntry word, bool isCorrect) async {
                 currentDay: _currentDay,
                 onDayChanged: _setCurrentDay,
                 navigateToCaptureTab: _navigateToCaptureTab,
+                onQuizAnswered: _updateQuizResult, // 콜백 연결
               ),
             ],
           ),

@@ -6,12 +6,15 @@ class ModernQuizScreen extends StatefulWidget {
   final List<WordEntry> words;
   final List<WordEntry> allWords;
   final Function(String, {AccentType? accent}) onSpeakWord;
+  final Function(WordEntry, bool) onQuizAnswered; // 콜백 추가
+
 
   const ModernQuizScreen({
     Key? key,
     required this.words,
     required this.allWords,
     required this.onSpeakWord,
+    required this.onQuizAnswered, // 콜백 추가
   }) : super(key: key);
 
   @override
@@ -29,9 +32,17 @@ class _ModernQuizScreenState extends State<ModernQuizScreen> {
 
   bool _isReady = false;
 
+    // 틀린 문제와 맞은 문제 추적
+  List<WordEntry> _wrongAnswers = [];
+  List<WordEntry> _correctWordsList = [];
+
   // 퀴즈 모드 (0: 단어->의미, 1: 의미->단어)
   int _quizMode = 0;
   AccentType _selectedAccent = AccentType.american;
+
+    // 퀴즈 결과 화면 표시 여부
+  bool _showingResults = false;
+
 
   @override
   void initState() {
@@ -65,6 +76,9 @@ class _ModernQuizScreenState extends State<ModernQuizScreen> {
     _totalAnswered = 0;
     _showResult = false;
     _selectedOption = null;
+    _wrongAnswers = [];
+    _correctWordsList = [];
+    _showingResults = false;
 
     setState(() {
       _isReady = true;
@@ -145,15 +159,23 @@ class _ModernQuizScreenState extends State<ModernQuizScreen> {
     final correctAnswer =
         _quizMode == 0 ? correctWord.meaning : correctWord.word;
 
+    bool isCorrect = selected == correctAnswer;
+
     setState(() {
       _selectedOption = selected;
       _showResult = true;
       _totalAnswered++;
 
-      if (selected == correctAnswer) {
+      if (isCorrect) {
         _correctAnswers++;
+        _correctWordsList.add(correctWord);
+      } else {
+        _wrongAnswers.add(correctWord);
       }
     });
+
+    // 퀴즈 결과 콜백 호출
+    widget.onQuizAnswered(correctWord, isCorrect);
   }
 
   void _nextQuestion() {
@@ -161,12 +183,34 @@ class _ModernQuizScreenState extends State<ModernQuizScreen> {
       _currentIndex++;
       if (_currentIndex < _quizWords.length) {
         _prepareQuestion();
+      } else {
+        // 모든 문제 완료 - 결과 화면으로 전환
+        _showingResults = true;
       }
     });
   }
 
   void _restartQuiz() {
     _prepareQuiz();
+  }
+
+    // 틀린 문제만으로 다시 시작
+  void _restartWithMistakes() {
+    setState(() {
+      if (_wrongAnswers.isNotEmpty) {
+        _quizWords = List.from(_wrongAnswers);
+        _quizWords.shuffle();
+        _currentIndex = 0;
+        _correctAnswers = 0;
+        _totalAnswered = 0;
+        _wrongAnswers = [];
+        _correctWordsList = [];
+        _showResult = false;
+        _selectedOption = null;
+        _showingResults = false;
+        _prepareQuestion();
+      }
+    });
   }
 
   void _toggleQuizMode() {
@@ -410,18 +454,112 @@ class _ModernQuizScreenState extends State<ModernQuizScreen> {
               ),
             ),
             SizedBox(height: 40),
-            ElevatedButton(
-              onPressed: _restartQuiz,
-              child: Text('다시 시작하기'),
-              style: ElevatedButton.styleFrom(
-                padding: EdgeInsets.symmetric(horizontal: 30, vertical: 15),
-                backgroundColor:
-                    isDarkMode ? Colors.amber.shade700 : Colors.amber.shade600,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+            
+            // 오답 단어 요약 추가
+            if (_wrongAnswers.isNotEmpty) ...[
+              SizedBox(height: 24),
+              Text(
+                '틀린 단어: ${_wrongAnswers.length}개',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: isDarkMode ? Colors.red.shade300 : Colors.red.shade700,
                 ),
               ),
+              SizedBox(height: 8),
+              Container(
+                padding: EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: isDarkMode 
+                      ? Colors.red.shade900.withOpacity(0.3)
+                      : Colors.red.shade50,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: isDarkMode 
+                        ? Colors.red.shade700
+                        : Colors.red.shade200,
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: _wrongAnswers.take(3).map((word) => Padding(
+                    padding: const EdgeInsets.only(bottom: 4),
+                    child: Text(
+                      '• ${word.word} : ${word.meaning}',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: isDarkMode 
+                            ? Colors.red.shade300
+                            : Colors.red.shade700,
+                      ),
+                    ),
+                  )).toList() + (_wrongAnswers.length > 3 
+                    ? [Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Text(
+                          '  ...외 ${_wrongAnswers.length - 3}개',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontStyle: FontStyle.italic,
+                            color: isDarkMode 
+                                ? Colors.grey.shade400
+                                : Colors.grey.shade600,
+                          ),
+                        ),
+                      )]
+                    : []),
+                ),
+              ),
+            ],
+            
+            SizedBox(height: 40),
+            
+            // 버튼 영역
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                if (_wrongAnswers.isNotEmpty)
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: _restartWithMistakes,
+                      icon: Icon(Icons.replay),
+                      label: Text('틀린 문제만 다시 풀기'),
+                      style: OutlinedButton.styleFrom(
+                        padding: EdgeInsets.symmetric(vertical: 12),
+                        side: BorderSide(
+                          color: isDarkMode
+                              ? Colors.red.shade300
+                              : Colors.red.shade700,
+                        ),
+                        foregroundColor: isDarkMode
+                            ? Colors.red.shade300
+                            : Colors.red.shade700,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                  ),
+                if (_wrongAnswers.isNotEmpty)
+                  SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: _restartQuiz,
+                    icon: Icon(Icons.refresh),
+                    label: Text('새로 시작하기'),
+                    style: ElevatedButton.styleFrom(
+                      padding: EdgeInsets.symmetric(vertical: 12),
+                      backgroundColor: isDarkMode 
+                          ? Colors.amber.shade700 
+                          : Colors.amber.shade600,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ],
         ),

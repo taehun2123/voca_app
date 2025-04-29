@@ -1,4 +1,3 @@
-// lib/screens/tabs/quiz_tab.dart
 import 'package:flutter/material.dart';
 import 'package:vocabulary_app/model/word_entry.dart';
 import 'package:vocabulary_app/screens/direct_input_quiz_screen.dart';
@@ -13,6 +12,7 @@ class QuizTab extends StatefulWidget {
   final String currentDay;
   final Function(String) onDayChanged;
   final Function() navigateToCaptureTab;
+  final Function(WordEntry, bool) onQuizAnswered; // 콜백 명시적 추가
 
   const QuizTab({
     Key? key,
@@ -23,6 +23,7 @@ class QuizTab extends StatefulWidget {
     required this.currentDay,
     required this.onDayChanged,
     required this.navigateToCaptureTab,
+    required this.onQuizAnswered, // 콜백 명시적 추가
   }) : super(key: key);
 
   @override
@@ -47,20 +48,6 @@ class _QuizTabState extends State<QuizTab> with SingleTickerProviderStateMixin {
   void dispose() {
     _tabController.dispose();
     super.dispose();
-  }
-  
-  // 퀴즈 결과 업데이트 콜백
-  Future<void> _onQuizAnswered(WordEntry word, bool isCorrect) async {
-    try {
-      // 단어 업데이트
-      final updatedWord = word.updateQuizResult(isCorrect);
-      
-      // 저장소에 저장 (부모로부터 전달받은 콜백 활용)
-      // 여기서는 간단히 콘솔에 로그만 출력
-      print('퀴즈 결과 업데이트: ${word.word}, 정답: $isCorrect');
-    } catch (e) {
-      print('퀴즈 결과 업데이트 중 오류: $e');
-    }
   }
 
   @override
@@ -105,18 +92,19 @@ class _QuizTabState extends State<QuizTab> with SingleTickerProviderStateMixin {
           child: TabBarView(
             controller: _tabController,
             children: [
-              // 객관식 퀴즈 화면 (기존)
+              // 객관식 퀴즈 화면 (수정된 부분 - onQuizAnswered 콜백 추가)
               ModernQuizScreen(
                 words: widget.dayCollections[widget.currentDay] ?? [],
                 allWords: widget.allWords,
                 onSpeakWord: widget.onSpeakWord,
+                onQuizAnswered: widget.onQuizAnswered, // 콜백 연결
               ),
               
-              // 주관식 퀴즈 화면 (추가)
+              // 주관식 퀴즈 화면 (수정된 부분 - onQuizAnswered 콜백 추가)
               DirectInputQuizScreen(
                 words: widget.dayCollections[widget.currentDay] ?? [],
                 onSpeakWord: widget.onSpeakWord,
-                onQuizAnswered: _onQuizAnswered,
+                onQuizAnswered: widget.onQuizAnswered, // 콜백 연결
               ),
             ],
           ),

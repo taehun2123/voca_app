@@ -179,30 +179,31 @@ class _HomePageState extends State<HomePage>
     });
   }
 
-  // 퀴즈 결과 업데이트 메서드 추가
-  Future<void> _updateQuizResult(WordEntry word, bool isCorrect) async {
-    try {
-      // 퀴즈 결과 업데이트된 단어 생성
-      final updatedWord = word.updateQuizResult(isCorrect);
+Future<void> _updateQuizResult(WordEntry word, bool isCorrect) async {
+  try {
+    // 퀴즈 결과 업데이트된 단어 생성
+    final updatedWord = word.updateQuizResult(isCorrect);
 
-      // 저장소에 업데이트
-      await _storageService.saveWord(updatedWord);
+    // 저장소에 업데이트
+    await _storageService.updateQuizResult(word.word, isCorrect);
 
-      // 메모리에서도 업데이트
-      setState(() {
-        final wordIndex = _dayCollections[_currentDay]
-            ?.indexWhere((w) => w.word == word.word);
-
+    // 메모리에서도 업데이트
+    setState(() {
+      // 단어장 별로 단어 찾아서 업데이트
+      for (final dayName in _dayCollections.keys) {
+        final wordIndex = _dayCollections[dayName]?.indexWhere((w) => w.word == word.word);
         if (wordIndex != null && wordIndex >= 0) {
-          _dayCollections[_currentDay]![wordIndex] = updatedWord;
+          _dayCollections[dayName]![wordIndex] = updatedWord;
+          break; // 단어를 찾았으므로 반복 중단
         }
-      });
+      }
+    });
 
-      print('퀴즈 결과 업데이트 완료: ${word.word} (정답: $isCorrect)');
-    } catch (e) {
-      print('퀴즈 결과 업데이트 중 오류: $e');
-    }
+    print('퀴즈 결과 업데이트 완료: ${word.word} (정답: $isCorrect, 난이도: ${updatedWord.difficulty})');
+  } catch (e) {
+    print('퀴즈 결과 업데이트 중 오류: $e');
   }
+}
 
 // 단어 암기 상태 업데이트 메서드 (기존 _updateMemorizedStatus 메서드 수정 또는 추가)
   Future<void> _updateWordMemorizedStatus(WordEntry word) async {

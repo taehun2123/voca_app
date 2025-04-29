@@ -29,11 +29,11 @@ class _DirectInputQuizScreenState extends State<DirectInputQuizScreen> {
   bool _isPartiallyCorrect = false;
   String _correctAnswer = '';
   AccentType _selectedAccent = AccentType.american;
-  
+
   // 퀴즈 결과 저장
   List<WordEntry> _wrongAnswers = [];
   List<WordEntry> _partiallyCorrectAnswers = [];
-  
+
   // 힌트 관련
   bool _showHint = false;
   String _hintText = '';
@@ -72,11 +72,11 @@ class _DirectInputQuizScreenState extends State<DirectInputQuizScreen> {
     _quizWords.shuffle();
     _currentIndex = 0;
     _resetAnswer();
-    
+
     // 결과 리스트 초기화
     _wrongAnswers = [];
     _partiallyCorrectAnswers = [];
-    
+
     setState(() {
       _showingResults = false;
     });
@@ -92,6 +92,44 @@ class _DirectInputQuizScreenState extends State<DirectInputQuizScreen> {
     _hintLevel = 0;
   }
 
+// 기존 _extractKeywords 메서드 개선
+  List<String> _extractKeywords(String text) {
+    // 특수문자 및 구두점 제거
+    String cleaned = text.replaceAll(RegExp(r'[^\w\s가-힣]'), '');
+
+    // 의미없는 단어들 제거 (조사, 관사 등)
+    List<String> stopWords = [
+      '은',
+      '는',
+      '이',
+      '가',
+      '을',
+      '를',
+      '에',
+      '의',
+      '로',
+      '으로',
+      'a',
+      'an',
+      'the',
+      'to',
+      'in',
+      'on',
+      'of',
+      'for'
+    ];
+
+    // 단어로 분리하고 필터링
+    List<String> words = cleaned
+        .toLowerCase()
+        .split(RegExp(r'\s+'))
+        .where((word) => word.isNotEmpty && !stopWords.contains(word))
+        .toList();
+
+    return words;
+  }
+
+// 개선된 _checkAnswer 메서드
   void _checkAnswer() {
     if (_answerController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -106,25 +144,52 @@ class _DirectInputQuizScreenState extends State<DirectInputQuizScreen> {
     final userAnswer = _answerController.text.trim().toLowerCase();
     final currentWord = _quizWords[_currentIndex];
     _correctAnswer = currentWord.meaning;
-    
+
     // 정답 체크 - 의미는 여러 가지 표현이 있을 수 있으므로 포함 관계 확인
     final meaningKeywords = _extractKeywords(currentWord.meaning);
     final userAnswerKeywords = _extractKeywords(userAnswer);
-    
-    // 모든 키워드가 있는지 또는 일부만 있는지 확인
-    final matchedKeywords = meaningKeywords.where(
-      (keyword) => userAnswerKeywords.any(
-        (userKeyword) => userKeyword.contains(keyword) || keyword.contains(userKeyword)
-      )
-    ).toList();
-    
-    _isAnswerCorrect = matchedKeywords.length == meaningKeywords.length;
-    _isPartiallyCorrect = matchedKeywords.isNotEmpty && matchedKeywords.length < meaningKeywords.length;
-    
+
+    if (meaningKeywords.isEmpty || userAnswerKeywords.isEmpty) {
+      // 키워드가 추출되지 않은 경우, 대안으로 단순 문자열 비교
+      _isAnswerCorrect = userAnswer == currentWord.meaning.toLowerCase();
+      _isPartiallyCorrect = !_isAnswerCorrect &&
+          (userAnswer.contains(currentWord.meaning.toLowerCase()) ||
+              currentWord.meaning.toLowerCase().contains(userAnswer));
+    } else {
+      // 키워드 매칭 방식 개선
+      int matchCount = 0;
+      for (var keyword in meaningKeywords) {
+        // 핵심 단어가 정확히 포함되어 있는지 확인
+        bool hasMatch = userAnswerKeywords.any((userKeyword) {
+          // 1. 정확히 일치하는 경우
+          if (userKeyword == keyword) return true;
+
+          // 2. 짧은 키워드(3글자 이상)가 긴 키워드에 정확히 포함되는 경우
+          if (keyword.length >= 3 && userKeyword.contains(keyword)) return true;
+          if (userKeyword.length >= 3 && keyword.contains(userKeyword))
+            return true;
+
+          // 3. 레벤슈타인 거리 계산 (비슷한 문자열 체크)
+          int distance = _calculateLevenshteinDistance(userKeyword, keyword);
+          return distance <= 1 && keyword.length > 3; // 긴 단어만 오타 허용
+        });
+
+        if (hasMatch) matchCount++;
+      }
+
+      double matchRatio = meaningKeywords.isNotEmpty
+          ? matchCount / meaningKeywords.length
+          : 0.0;
+
+      // 80% 이상 매칭되면 정답, 50% 이상 매칭되면 부분 정답
+      _isAnswerCorrect = matchRatio >= 0.8;
+      _isPartiallyCorrect = !_isAnswerCorrect && matchRatio >= 0.5;
+    }
+
     setState(() {
       _isAnswerChecked = true;
     });
-    
+
     // 퀴즈 결과 저장
     if (!_isAnswerCorrect) {
       if (_isPartiallyCorrect) {
@@ -133,25 +198,39 @@ class _DirectInputQuizScreenState extends State<DirectInputQuizScreen> {
         _wrongAnswers.add(currentWord);
       }
     }
-    
+
     // 정답률 업데이트 콜백 호출
     widget.onQuizAnswered(currentWord, _isAnswerCorrect);
   }
 
-  // 문자열에서 키워드 추출
-  List<String> _extractKeywords(String text) {
-    // 특수문자 및 구두점 제거
-    String cleaned = text.replaceAll(RegExp(r'[^\w\s]'), '');
-    
-    // 의미없는 단어들 제거 (조사, 관사 등)
-    List<String> stopWords = ['은', '는', '이', '가', '을', '를', '에', '의', '로', '으로', 'a', 'an', 'the', 'to', 'in', 'on', 'of', 'for'];
-    
-    // 단어로 분리하고 필터링
-    List<String> words = cleaned.toLowerCase().split(RegExp(r'\s+'))
-        .where((word) => word.isNotEmpty && !stopWords.contains(word))
-        .toList();
-    
-    return words;
+// 레벤슈타인 거리 계산 - 두 문자열 간의 유사도 측정 (오타 허용)
+  int _calculateLevenshteinDistance(String a, String b) {
+    if (a.isEmpty) return b.length;
+    if (b.isEmpty) return a.length;
+
+    List<List<int>> dp = List.generate(
+        a.length + 1, (i) => List.generate(b.length + 1, (j) => 0));
+
+    for (int i = 0; i <= a.length; i++) {
+      dp[i][0] = i;
+    }
+
+    for (int j = 0; j <= b.length; j++) {
+      dp[0][j] = j;
+    }
+
+    for (int i = 1; i <= a.length; i++) {
+      for (int j = 1; j <= b.length; j++) {
+        int cost = a[i - 1] == b[j - 1] ? 0 : 1;
+        dp[i][j] = [
+          dp[i - 1][j] + 1, // 삭제
+          dp[i][j - 1] + 1, // 삽입
+          dp[i - 1][j - 1] + cost // 교체 또는 일치
+        ].reduce((curr, next) => curr < next ? curr : next);
+      }
+    }
+
+    return dp[a.length][b.length];
   }
 
   void _nextQuestion() {
@@ -192,11 +271,11 @@ class _DirectInputQuizScreenState extends State<DirectInputQuizScreen> {
   void _showAnswerHint() {
     final currentWord = _quizWords[_currentIndex];
     final meaning = currentWord.meaning;
-    
+
     setState(() {
       _showHint = true;
       _hintLevel++;
-      
+
       // 힌트 레벨에 따라 다른 힌트 제공
       if (_hintLevel == 1) {
         // 첫 힌트: 첫 글자 보여주기
@@ -205,21 +284,21 @@ class _DirectInputQuizScreenState extends State<DirectInputQuizScreen> {
         // 두 번째 힌트: 몇 개 글자 더 보여주기 (약 30%)
         int revealCount = (meaning.length * 0.3).round();
         revealCount = revealCount < 1 ? 1 : revealCount;
-        
+
         List<String> chars = meaning.split('');
         List<String> hintChars = List.filled(meaning.length, '○');
-        
+
         // 첫 글자는 항상 공개
         hintChars[0] = chars[0];
-        
+
         // 나머지 공개 글자 랜덤 선택
         List<int> indices = List.generate(meaning.length - 1, (i) => i + 1);
         indices.shuffle();
-        
+
         for (int i = 0; i < revealCount - 1 && i < indices.length; i++) {
           hintChars[indices[i]] = chars[indices[i]];
         }
-        
+
         _hintText = hintChars.join(' ');
       } else {
         // 세 번째 힌트: 글자 수 힌트와 설명
@@ -231,7 +310,7 @@ class _DirectInputQuizScreenState extends State<DirectInputQuizScreen> {
   @override
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    
+
     // 퀴즈 데이터가 준비되지 않은 경우
     if (_quizWords.isEmpty) {
       return Center(
@@ -244,12 +323,12 @@ class _DirectInputQuizScreenState extends State<DirectInputQuizScreen> {
         ),
       );
     }
-    
+
     // 퀴즈 결과 화면
     if (_showingResults) {
       return _buildResultsScreen();
     }
-    
+
     return SingleChildScrollView(
       child: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -258,25 +337,23 @@ class _DirectInputQuizScreenState extends State<DirectInputQuizScreen> {
             // 진행 상태 표시
             _buildProgressIndicator(),
             SizedBox(height: 16),
-            
+
             // 문제 카드
             _buildQuestionCard(),
             SizedBox(height: 24),
-            
+
             // 답변 입력 필드
             _buildAnswerField(),
             SizedBox(height: 16),
-            
+
             // 힌트 섹션
-            if (_showHint && !_isAnswerChecked)
-              _buildHintSection(),
-            
+            if (_showHint && !_isAnswerChecked) _buildHintSection(),
+
             // 정답 확인 결과
-            if (_isAnswerChecked)
-              _buildAnswerResult(),
-            
+            if (_isAnswerChecked) _buildAnswerResult(),
+
             SizedBox(height: 24),
-            
+
             // 버튼 영역
             _buildActionButtons(),
           ],
@@ -287,7 +364,7 @@ class _DirectInputQuizScreenState extends State<DirectInputQuizScreen> {
 
   Widget _buildProgressIndicator() {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    
+
     return Column(
       children: [
         Row(
@@ -298,7 +375,8 @@ class _DirectInputQuizScreenState extends State<DirectInputQuizScreen> {
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
-                color: isDarkMode ? Colors.amber.shade300 : Colors.amber.shade700,
+                color:
+                    isDarkMode ? Colors.amber.shade300 : Colors.amber.shade700,
               ),
             ),
             Row(
@@ -337,7 +415,8 @@ class _DirectInputQuizScreenState extends State<DirectInputQuizScreen> {
         SizedBox(height: 8),
         LinearProgressIndicator(
           value: (_currentIndex + 1) / _quizWords.length,
-          backgroundColor: isDarkMode ? Colors.grey.shade800 : Colors.grey.shade200,
+          backgroundColor:
+              isDarkMode ? Colors.grey.shade800 : Colors.grey.shade200,
           valueColor: AlwaysStoppedAnimation<Color>(
             isDarkMode ? Colors.amber.shade700 : Colors.amber.shade500,
           ),
@@ -351,13 +430,15 @@ class _DirectInputQuizScreenState extends State<DirectInputQuizScreen> {
   Widget _buildQuestionCard() {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     final currentWord = _quizWords[_currentIndex];
-    
+
     return Card(
       elevation: 4,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
         side: BorderSide(
-          color: isDarkMode ? Colors.amber.shade700.withOpacity(0.6) : Colors.amber.shade300,
+          color: isDarkMode
+              ? Colors.amber.shade700.withOpacity(0.6)
+              : Colors.amber.shade300,
           width: 1.5,
         ),
       ),
@@ -388,9 +469,12 @@ class _DirectInputQuizScreenState extends State<DirectInputQuizScreen> {
                 IconButton(
                   icon: Icon(
                     Icons.volume_up,
-                    color: isDarkMode ? Colors.amber.shade300 : Colors.amber.shade700,
+                    color: isDarkMode
+                        ? Colors.amber.shade300
+                        : Colors.amber.shade700,
                   ),
-                  onPressed: () => widget.onSpeakWord(currentWord.word, accent: _selectedAccent),
+                  onPressed: () => widget.onSpeakWord(currentWord.word,
+                      accent: _selectedAccent),
                   tooltip: '발음 듣기',
                 ),
               ],
@@ -403,7 +487,9 @@ class _DirectInputQuizScreenState extends State<DirectInputQuizScreen> {
                   style: TextStyle(
                     fontSize: 16,
                     fontStyle: FontStyle.italic,
-                    color: isDarkMode ? Colors.grey.shade400 : Colors.grey.shade600,
+                    color: isDarkMode
+                        ? Colors.grey.shade400
+                        : Colors.grey.shade600,
                   ),
                 ),
               ),
@@ -415,7 +501,7 @@ class _DirectInputQuizScreenState extends State<DirectInputQuizScreen> {
 
   Widget _buildAnswerField() {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -442,7 +528,9 @@ class _DirectInputQuizScreenState extends State<DirectInputQuizScreen> {
                 ? IconButton(
                     icon: Icon(Icons.lightbulb_outline),
                     tooltip: '힌트 보기',
-                    color: isDarkMode ? Colors.amber.shade300 : Colors.amber.shade700,
+                    color: isDarkMode
+                        ? Colors.amber.shade300
+                        : Colors.amber.shade700,
                     onPressed: _showAnswerHint,
                   )
                 : null,
@@ -463,18 +551,18 @@ class _DirectInputQuizScreenState extends State<DirectInputQuizScreen> {
 
   Widget _buildHintSection() {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    
+
     return Container(
       margin: EdgeInsets.symmetric(vertical: 16),
       padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: isDarkMode 
-            ? Colors.amber.shade900.withOpacity(0.3) 
+        color: isDarkMode
+            ? Colors.amber.shade900.withOpacity(0.3)
             : Colors.amber.shade50,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: isDarkMode 
-              ? Colors.amber.shade800.withOpacity(0.6) 
+          color: isDarkMode
+              ? Colors.amber.shade800.withOpacity(0.6)
               : Colors.amber.shade200,
         ),
       ),
@@ -485,7 +573,8 @@ class _DirectInputQuizScreenState extends State<DirectInputQuizScreen> {
             children: [
               Icon(
                 Icons.lightbulb,
-                color: isDarkMode ? Colors.amber.shade300 : Colors.amber.shade700,
+                color:
+                    isDarkMode ? Colors.amber.shade300 : Colors.amber.shade700,
                 size: 20,
               ),
               SizedBox(width: 8),
@@ -494,7 +583,9 @@ class _DirectInputQuizScreenState extends State<DirectInputQuizScreen> {
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
-                  color: isDarkMode ? Colors.amber.shade300 : Colors.amber.shade700,
+                  color: isDarkMode
+                      ? Colors.amber.shade300
+                      : Colors.amber.shade700,
                 ),
               ),
             ],
@@ -515,33 +606,40 @@ class _DirectInputQuizScreenState extends State<DirectInputQuizScreen> {
 
   Widget _buildAnswerResult() {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    
+
     Color bgColor;
     Color borderColor;
     Color textColor;
     IconData iconData;
     String resultText;
-    
+
     if (_isAnswerCorrect) {
-      bgColor = isDarkMode ? Colors.green.shade900.withOpacity(0.3) : Colors.green.shade50;
+      bgColor = isDarkMode
+          ? Colors.green.shade900.withOpacity(0.3)
+          : Colors.green.shade50;
       borderColor = isDarkMode ? Colors.green.shade700 : Colors.green.shade300;
       textColor = isDarkMode ? Colors.green.shade300 : Colors.green.shade700;
       iconData = Icons.check_circle;
       resultText = '정답입니다!';
     } else if (_isPartiallyCorrect) {
-      bgColor = isDarkMode ? Colors.orange.shade900.withOpacity(0.3) : Colors.orange.shade50;
-      borderColor = isDarkMode ? Colors.orange.shade700 : Colors.orange.shade300;
+      bgColor = isDarkMode
+          ? Colors.orange.shade900.withOpacity(0.3)
+          : Colors.orange.shade50;
+      borderColor =
+          isDarkMode ? Colors.orange.shade700 : Colors.orange.shade300;
       textColor = isDarkMode ? Colors.orange.shade300 : Colors.orange.shade700;
       iconData = Icons.remove_circle;
       resultText = '부분 정답입니다. 완전한 정답은:';
     } else {
-      bgColor = isDarkMode ? Colors.red.shade900.withOpacity(0.3) : Colors.red.shade50;
+      bgColor = isDarkMode
+          ? Colors.red.shade900.withOpacity(0.3)
+          : Colors.red.shade50;
       borderColor = isDarkMode ? Colors.red.shade700 : Colors.red.shade300;
       textColor = isDarkMode ? Colors.red.shade300 : Colors.red.shade700;
       iconData = Icons.cancel;
       resultText = '오답입니다. 정답은:';
     }
-    
+
     return Container(
       margin: EdgeInsets.symmetric(vertical: 16),
       padding: EdgeInsets.all(16),
@@ -600,7 +698,7 @@ class _DirectInputQuizScreenState extends State<DirectInputQuizScreen> {
 
   Widget _buildActionButtons() {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    
+
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
@@ -609,7 +707,8 @@ class _DirectInputQuizScreenState extends State<DirectInputQuizScreen> {
             child: ElevatedButton(
               onPressed: _checkAnswer,
               style: ElevatedButton.styleFrom(
-                backgroundColor: isDarkMode ? Colors.blue.shade700 : Colors.blue.shade600,
+                backgroundColor:
+                    isDarkMode ? Colors.blue.shade700 : Colors.blue.shade600,
                 foregroundColor: Colors.white,
                 padding: EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(
@@ -624,7 +723,8 @@ class _DirectInputQuizScreenState extends State<DirectInputQuizScreen> {
             child: ElevatedButton(
               onPressed: _nextQuestion,
               style: ElevatedButton.styleFrom(
-                backgroundColor: isDarkMode ? Colors.amber.shade700 : Colors.amber.shade600,
+                backgroundColor:
+                    isDarkMode ? Colors.amber.shade700 : Colors.amber.shade600,
                 foregroundColor: Colors.white,
                 padding: EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(
@@ -640,7 +740,7 @@ class _DirectInputQuizScreenState extends State<DirectInputQuizScreen> {
 
   Widget _buildResultsScreen() {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    
+
     return Padding(
       padding: const EdgeInsets.all(16.0),
       child: Column(
@@ -655,18 +755,18 @@ class _DirectInputQuizScreenState extends State<DirectInputQuizScreen> {
             ),
           ),
           SizedBox(height: 8),
-          
+
           // 점수 정보
           Container(
             padding: EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: isDarkMode 
-                  ? Colors.amber.shade900.withOpacity(0.3) 
+              color: isDarkMode
+                  ? Colors.amber.shade900.withOpacity(0.3)
                   : Colors.amber.shade50,
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: isDarkMode 
-                    ? Colors.amber.shade800.withOpacity(0.6) 
+                color: isDarkMode
+                    ? Colors.amber.shade800.withOpacity(0.6)
                     : Colors.amber.shade200,
               ),
             ),
@@ -676,7 +776,9 @@ class _DirectInputQuizScreenState extends State<DirectInputQuizScreen> {
                   '맞힌 문제 수',
                   style: TextStyle(
                     fontSize: 16,
-                    color: isDarkMode ? Colors.amber.shade300 : Colors.amber.shade700,
+                    color: isDarkMode
+                        ? Colors.amber.shade300
+                        : Colors.amber.shade700,
                   ),
                 ),
                 SizedBox(height: 8),
@@ -693,14 +795,16 @@ class _DirectInputQuizScreenState extends State<DirectInputQuizScreen> {
                   '정답률: ${((_quizWords.length - _wrongAnswers.length - _partiallyCorrectAnswers.length) / _quizWords.length * 100).toStringAsFixed(1)}%',
                   style: TextStyle(
                     fontSize: 14,
-                    color: isDarkMode ? Colors.grey.shade300 : Colors.grey.shade700,
+                    color: isDarkMode
+                        ? Colors.grey.shade300
+                        : Colors.grey.shade700,
                   ),
                 ),
               ],
             ),
           ),
           SizedBox(height: 24),
-          
+
           // 틀린 단어 및 부분 정답 단어 목록
           Expanded(
             child: DefaultTabController(
@@ -730,9 +834,15 @@ class _DirectInputQuizScreenState extends State<DirectInputQuizScreen> {
                         ),
                       ),
                     ],
-                    labelColor: isDarkMode ? Colors.amber.shade300 : Colors.amber.shade700,
-                    unselectedLabelColor: isDarkMode ? Colors.grey.shade400 : Colors.grey.shade600,
-                    indicatorColor: isDarkMode ? Colors.amber.shade300 : Colors.amber.shade700,
+                    labelColor: isDarkMode
+                        ? Colors.amber.shade300
+                        : Colors.amber.shade700,
+                    unselectedLabelColor: isDarkMode
+                        ? Colors.grey.shade400
+                        : Colors.grey.shade600,
+                    indicatorColor: isDarkMode
+                        ? Colors.amber.shade300
+                        : Colors.amber.shade700,
                   ),
                   SizedBox(height: 8),
                   Expanded(
@@ -742,7 +852,7 @@ class _DirectInputQuizScreenState extends State<DirectInputQuizScreen> {
                         _wrongAnswers.isEmpty
                             ? _buildEmptyTabContent('틀린 단어가 없습니다!')
                             : _buildWrongWordsList(),
-                        
+
                         // 부분 정답 탭
                         _partiallyCorrectAnswers.isEmpty
                             ? _buildEmptyTabContent('부분 정답 단어가 없습니다!')
@@ -754,7 +864,7 @@ class _DirectInputQuizScreenState extends State<DirectInputQuizScreen> {
               ),
             ),
           ),
-          
+
           // 하단 버튼
           SizedBox(height: 16),
           Row(
@@ -763,9 +873,13 @@ class _DirectInputQuizScreenState extends State<DirectInputQuizScreen> {
                 child: OutlinedButton(
                   onPressed: _restartQuiz,
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: isDarkMode ? Colors.amber.shade300 : Colors.amber.shade700,
+                    foregroundColor: isDarkMode
+                        ? Colors.amber.shade300
+                        : Colors.amber.shade700,
                     side: BorderSide(
-                      color: isDarkMode ? Colors.amber.shade700 : Colors.amber.shade300,
+                      color: isDarkMode
+                          ? Colors.amber.shade700
+                          : Colors.amber.shade300,
                     ),
                     padding: EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
@@ -778,18 +892,21 @@ class _DirectInputQuizScreenState extends State<DirectInputQuizScreen> {
               SizedBox(width: 8),
               Expanded(
                 child: ElevatedButton(
-                  onPressed: _wrongAnswers.isEmpty && _partiallyCorrectAnswers.isEmpty
-                      ? null
-                      : _restartWithMistakes,
+                  onPressed:
+                      _wrongAnswers.isEmpty && _partiallyCorrectAnswers.isEmpty
+                          ? null
+                          : _restartWithMistakes,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: isDarkMode ? Colors.amber.shade700 : Colors.amber.shade600,
+                    backgroundColor: isDarkMode
+                        ? Colors.amber.shade700
+                        : Colors.amber.shade600,
                     foregroundColor: Colors.white,
                     padding: EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    disabledBackgroundColor: isDarkMode 
-                        ? Colors.grey.shade700 
+                    disabledBackgroundColor: isDarkMode
+                        ? Colors.grey.shade700
                         : Colors.grey.shade300,
                   ),
                   child: Text('틀린 문제만 다시'),
@@ -804,7 +921,7 @@ class _DirectInputQuizScreenState extends State<DirectInputQuizScreen> {
 
   Widget _buildEmptyTabContent(String message) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    
+
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,

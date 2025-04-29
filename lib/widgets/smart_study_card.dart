@@ -1,4 +1,3 @@
-// lib/widgets/smart_study_card.dart
 import 'package:flutter/material.dart';
 import 'package:vocabulary_app/model/word_entry.dart';
 import 'package:vocabulary_app/services/tts_service.dart';
@@ -28,7 +27,7 @@ class _SmartStudyCardState extends State<SmartStudyCard> {
   bool _showQuiz = false;
   bool _answerChecked = false;
   bool _isCorrect = false;
-  
+
   TextEditingController _answerController = TextEditingController();
   AccentType _selectedAccent = AccentType.american;
 
@@ -75,38 +74,75 @@ class _SmartStudyCardState extends State<SmartStudyCard> {
     final meaningKeywords = _extractKeywords(correctAnswer);
     final userAnswerKeywords = _extractKeywords(userAnswer);
 
-    // 모든 키워드가 있는지 또는 일부만 있는지 확인
-    final matchedKeywords = meaningKeywords.where(
-      (keyword) => userAnswerKeywords.any(
-        (userKeyword) => userKeyword.contains(keyword) || keyword.contains(userKeyword)
-      )
-    ).toList();
+    // 개선된 매칭 로직
+    int matchCount = 0;
+    for (var keyword in meaningKeywords) {
+      bool hasMatch = userAnswerKeywords.any((userKeyword) {
+        // 정확히 일치하는 경우
+        if (userKeyword == keyword) return true;
 
-    bool isCorrect = matchedKeywords.length == meaningKeywords.length;
-    bool isPartiallyCorrect = matchedKeywords.isNotEmpty && matchedKeywords.length < meaningKeywords.length;
+        // 짧은 키워드(3글자 이상)가 긴 키워드에 정확히 포함되는 경우
+        if (keyword.length >= 3 && userKeyword.contains(keyword)) return true;
+        if (userKeyword.length >= 3 && keyword.contains(userKeyword))
+          return true;
+
+        return false;
+      });
+
+      if (hasMatch) matchCount++;
+    }
+
+    double matchRatio =
+        meaningKeywords.isNotEmpty ? matchCount / meaningKeywords.length : 0.0;
+
+    // 80% 이상 매칭되면 정답
+    bool isCorrect = matchRatio >= 0.8;
 
     setState(() {
       _answerChecked = true;
       _isCorrect = isCorrect;
     });
 
-    // 퀴즈 결과 업데이트 콜백 호출
+    // 퀴즈 결과 업데이트 콜백 호출 - 정확히 전달되는지 확인
     widget.onQuizAnswered(isCorrect);
+    print(
+        '스마트 학습: 퀴즈 결과: ${widget.word.word}, 정답: $isCorrect, 매칭 비율: ${(matchRatio * 100).toStringAsFixed(1)}%');
   }
 
   // 문자열에서 키워드 추출
   List<String> _extractKeywords(String text) {
     // 특수문자 및 구두점 제거
     String cleaned = text.replaceAll(RegExp(r'[^\w\s]'), '');
-    
+
     // 의미없는 단어들 제거 (조사, 관사 등)
-    List<String> stopWords = ['은', '는', '이', '가', '을', '를', '에', '의', '로', '으로', 'a', 'an', 'the', 'to', 'in', 'on', 'of', 'for'];
-    
+    List<String> stopWords = [
+      '은',
+      '는',
+      '이',
+      '가',
+      '을',
+      '를',
+      '에',
+      '의',
+      '로',
+      '으로',
+      'a',
+      'an',
+      'the',
+      'to',
+      'in',
+      'on',
+      'of',
+      'for'
+    ];
+
     // 단어로 분리하고 필터링
-    List<String> words = cleaned.toLowerCase().split(RegExp(r'\s+'))
+    List<String> words = cleaned
+        .toLowerCase()
+        .split(RegExp(r'\s+'))
         .where((word) => word.isNotEmpty && !stopWords.contains(word))
         .toList();
-    
+
     return words;
   }
 
@@ -121,18 +157,16 @@ class _SmartStudyCardState extends State<SmartStudyCard> {
   @override
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    
+
     // 카드 색상 설정
     Color bgColor = isDarkMode
         ? widget.color.shade900.withOpacity(0.3)
         : widget.color.shade50;
-    Color borderColor = isDarkMode
-        ? widget.color.shade700
-        : widget.color.shade200;
-    Color accentColor = isDarkMode
-        ? widget.color.shade300
-        : widget.color.shade700;
-        
+    Color borderColor =
+        isDarkMode ? widget.color.shade700 : widget.color.shade200;
+    Color accentColor =
+        isDarkMode ? widget.color.shade300 : widget.color.shade700;
+
     return Card(
       margin: EdgeInsets.only(bottom: 16),
       elevation: 0,
@@ -184,23 +218,28 @@ class _SmartStudyCardState extends State<SmartStudyCard> {
                     Icons.volume_up,
                     color: accentColor,
                   ),
-                  onPressed: () => widget.onSpeakWord(widget.word.word, accent: _selectedAccent),
+                  onPressed: () => widget.onSpeakWord(widget.word.word,
+                      accent: _selectedAccent),
                   tooltip: '발음 듣기',
                 ),
                 // 암기 버튼
                 IconButton(
                   icon: Icon(
-                    widget.word.isMemorized ? Icons.check_circle : Icons.check_circle_outline,
+                    widget.word.isMemorized
+                        ? Icons.check_circle
+                        : Icons.check_circle_outline,
                     color: widget.word.isMemorized
                         ? Colors.green.shade300
-                        : isDarkMode ? Colors.grey.shade400 : Colors.grey.shade600,
+                        : isDarkMode
+                            ? Colors.grey.shade400
+                            : Colors.grey.shade600,
                   ),
                   onPressed: widget.onMemorized,
                   tooltip: widget.word.isMemorized ? '암기 완료' : '암기하기',
                 ),
               ],
             ),
-            
+
             // 통계 영역 - 간략하게 퀴즈 정답률과 난이도만 표시
             Container(
               margin: EdgeInsets.symmetric(vertical: 12),
@@ -237,7 +276,7 @@ class _SmartStudyCardState extends State<SmartStudyCard> {
                 ],
               ),
             ),
-            
+
             // 뜻 보기/숨기기 버튼
             GestureDetector(
               onTap: _toggleMeaning,
@@ -246,9 +285,7 @@ class _SmartStudyCardState extends State<SmartStudyCard> {
                 padding: EdgeInsets.symmetric(vertical: 12),
                 margin: EdgeInsets.only(bottom: 12),
                 decoration: BoxDecoration(
-                  color: isDarkMode
-                      ? Colors.grey.shade800
-                      : Colors.white,
+                  color: isDarkMode ? Colors.grey.shade800 : Colors.white,
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
                     color: isDarkMode
@@ -280,7 +317,7 @@ class _SmartStudyCardState extends State<SmartStudyCard> {
                 ),
               ),
             ),
-            
+
             // 뜻 영역 (토글로 표시/숨김)
             if (_showMeaning && !_showQuiz) ...[
               Container(
@@ -337,7 +374,7 @@ class _SmartStudyCardState extends State<SmartStudyCard> {
                   ],
                 ),
               ),
-              
+
               // 퀴즈 시작 버튼
               if (!_showQuiz)
                 TextButton.icon(
@@ -350,7 +387,7 @@ class _SmartStudyCardState extends State<SmartStudyCard> {
                   ),
                 ),
             ],
-            
+
             // 퀴즈 영역
             if (_showQuiz) ...[
               Container(
@@ -374,7 +411,6 @@ class _SmartStudyCardState extends State<SmartStudyCard> {
                       ),
                     ),
                     SizedBox(height: 12),
-                    
                     if (!_answerChecked) ...[
                       TextField(
                         controller: _answerController,
@@ -384,9 +420,8 @@ class _SmartStudyCardState extends State<SmartStudyCard> {
                             borderRadius: BorderRadius.circular(12),
                           ),
                           filled: true,
-                          fillColor: isDarkMode
-                              ? Colors.grey.shade800
-                              : Colors.white,
+                          fillColor:
+                              isDarkMode ? Colors.grey.shade800 : Colors.white,
                         ),
                         onSubmitted: (_) => _checkAnswer(),
                       ),
@@ -396,9 +431,8 @@ class _SmartStudyCardState extends State<SmartStudyCard> {
                         child: Text('정답 확인'),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: accentColor,
-                          foregroundColor: isDarkMode
-                              ? Colors.black
-                              : Colors.white,
+                          foregroundColor:
+                              isDarkMode ? Colors.black : Colors.white,
                           padding: EdgeInsets.symmetric(vertical: 12),
                           minimumSize: Size(double.infinity, 48),
                           shape: RoundedRectangleBorder(
@@ -469,9 +503,8 @@ class _SmartStudyCardState extends State<SmartStudyCard> {
                               style: TextStyle(
                                 fontWeight: FontWeight.bold,
                                 fontSize: 16,
-                                color: isDarkMode
-                                    ? Colors.white
-                                    : Colors.black87,
+                                color:
+                                    isDarkMode ? Colors.white : Colors.black87,
                               ),
                             ),
                             SizedBox(height: 4),
@@ -510,9 +543,7 @@ class _SmartStudyCardState extends State<SmartStudyCard> {
                             child: ElevatedButton(
                               onPressed: widget.onMemorized,
                               child: Text(
-                                widget.word.isMemorized
-                                    ? '암기 취소'
-                                    : '암기 완료',
+                                widget.word.isMemorized ? '암기 취소' : '암기 완료',
                               ),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: widget.word.isMemorized
@@ -546,7 +577,7 @@ class _SmartStudyCardState extends State<SmartStudyCard> {
       ),
     );
   }
-  
+
   Widget _buildMiniStat({
     required BuildContext context,
     required String label,
@@ -554,7 +585,7 @@ class _SmartStudyCardState extends State<SmartStudyCard> {
     required IconData icon,
   }) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    
+
     return Column(
       children: [
         Row(
@@ -563,18 +594,14 @@ class _SmartStudyCardState extends State<SmartStudyCard> {
             Icon(
               icon,
               size: 12,
-              color: isDarkMode
-                  ? Colors.grey.shade400
-                  : Colors.grey.shade700,
+              color: isDarkMode ? Colors.grey.shade400 : Colors.grey.shade700,
             ),
             SizedBox(width: 4),
             Text(
               label,
               style: TextStyle(
                 fontSize: 12,
-                color: isDarkMode
-                    ? Colors.grey.shade400
-                    : Colors.grey.shade700,
+                color: isDarkMode ? Colors.grey.shade400 : Colors.grey.shade700,
               ),
             ),
           ],
@@ -585,15 +612,13 @@ class _SmartStudyCardState extends State<SmartStudyCard> {
           style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.bold,
-            color: isDarkMode
-                ? Colors.white
-                : Colors.black87,
+            color: isDarkMode ? Colors.white : Colors.black87,
           ),
         ),
       ],
     );
   }
-  
+
   String _getDifficultyText(double difficulty) {
     if (difficulty >= 0.8) return '상';
     if (difficulty >= 0.4) return '중';

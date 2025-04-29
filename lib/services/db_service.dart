@@ -514,25 +514,30 @@ class DBService {
   }
   // lib/services/db_service.dart에 추가할 메서드
 
-  // 퀴즈 결과 업데이트
+// 3. DBService.dart에서 updateQuizResult 메서드 확인 및 개선
   Future<void> updateQuizResult(String wordText, bool isCorrect) async {
     final Database db = await database;
 
     try {
-      // 현재 단어 정보 가져오기
+      // 기존 단어 정보 조회
       final List<Map<String, dynamic>> maps = await db.query(
         'words',
         where: 'word = ?',
         whereArgs: [wordText],
       );
 
-      if (maps.isEmpty) return; // 단어가 없으면 무시
+      if (maps.isEmpty) {
+        print('퀴즈 결과 DB 업데이트 실패: 단어 "$wordText"를 찾을 수 없음');
+        return;
+      }
 
-      // 퀴즈 시도 횟수 및 정답 횟수 업데이트
+      // WordEntry 객체로 변환
       final word = WordEntry.fromMap(maps.first);
+
+      // 퀴즈 결과 업데이트
       final updatedWord = word.updateQuizResult(isCorrect);
 
-      // 업데이트
+      // DB 업데이트
       await db.update(
         'words',
         {
@@ -544,7 +549,20 @@ class DBService {
         whereArgs: [wordText],
       );
 
+      // 확인용 로그
       print('퀴즈 결과 DB 업데이트 성공: $wordText (정답: $isCorrect)');
+
+      // 업데이트 후 데이터 확인
+      final updated = await db.query(
+        'words',
+        where: 'word = ?',
+        whereArgs: [wordText],
+      );
+
+      if (updated.isNotEmpty) {
+        print(
+            '업데이트된 단어 정보: 시도: ${updated.first['quizAttempts']}, 정답: ${updated.first['quizCorrect']}, 난이도: ${updated.first['difficulty']}');
+      }
     } catch (e) {
       print('퀴즈 결과 DB 업데이트 오류: $e');
     }

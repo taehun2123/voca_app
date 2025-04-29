@@ -29,6 +29,10 @@ dependencies:
   table_calendar: ^3.2.0
   intl: ^0.20.2
   percent_indicator: ^4.2.5
+  extension_google_sign_in_as_googleapis_auth: ^2.0.13
+  googleapis: ^14.0.0
+  google_sign_in: ^6.3.0
+  firebase_auth: ^5.5.3
 
 dev_dependencies:
   flutter_test:

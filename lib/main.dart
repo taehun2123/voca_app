@@ -11,6 +11,7 @@ import 'package:vocabulary_app/services/tracking_permission_service.dart';
 import 'package:vocabulary_app/theme/app_themes.dart';
 import 'package:vocabulary_app/theme/theme_provider.dart';
 import 'screens/home_screen.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -67,6 +68,11 @@ void main() async {
 
     // Firebase 초기화
     await Firebase.initializeApp();
+
+    // FirebaseAuth 초기화 (Google Drive API 인증에 사용)
+    await FirebaseAuth.instance.setLanguageCode('ko'); // 언어 설정
+    print('Firebase 및 Auth 초기화 완료');
+
     // Remote Config 초기화
     await RemoteConfigService().initialize();
     // 광고 서비스 초기화 (추가)

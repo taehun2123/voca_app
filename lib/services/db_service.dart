@@ -484,6 +484,96 @@ class DBService {
     }
   }
 
+  // DBService 클래스에 추가할 validateStorage 메서드
+  Future<void> validateStorage() async {
+    try {
+      // 데이터베이스 객체 가져오기
+      final Database db = await database;
+
+      // 테이블 존재 여부 확인
+      final List<Map<String, dynamic>> tables = await db
+          .rawQuery("SELECT name FROM sqlite_master WHERE type='table';");
+
+      print('===== 저장소 유효성 검증 시작 =====');
+      print('존재하는 테이블: ${tables.map((t) => t['name']).join(', ')}');
+
+      // 필수 테이블 확인
+      bool hasWordsTable = false;
+      bool hasDayCollectionsTable = false;
+
+      for (var table in tables) {
+        String tableName = table['name'] as String;
+        if (tableName == 'words') hasWordsTable = true;
+        if (tableName == 'day_collections') hasDayCollectionsTable = true;
+      }
+
+      if (!hasWordsTable || !hasDayCollectionsTable) {
+        throw Exception(
+            '필수 테이블이 누락되었습니다. words: $hasWordsTable, day_collections: $hasDayCollectionsTable');
+      }
+
+      // 테이블 구조 확인
+      final List<Map<String, dynamic>> wordsColumns =
+          await db.rawQuery('PRAGMA table_info(words)');
+      print('words 테이블 컬럼: ${wordsColumns.map((c) => c['name']).join(', ')}');
+
+      final List<Map<String, dynamic>> dayColumns =
+          await db.rawQuery('PRAGMA table_info(day_collections)');
+      print(
+          'day_collections 테이블 컬럼: ${dayColumns.map((c) => c['name']).join(', ')}');
+
+      // 필수 컬럼 확인
+      const requiredWordsColumns = [
+        'word',
+        'meaning',
+        'day',
+        'createdAt',
+        'isMemorized'
+      ];
+      const requiredDayColumns = ['day', 'createdAt', 'wordCount'];
+
+      // words 테이블 필수 컬럼 확인
+      for (var col in requiredWordsColumns) {
+        if (!wordsColumns.any((c) => c['name'] == col)) {
+          throw Exception('words 테이블에 필수 컬럼이 누락되었습니다: $col');
+        }
+      }
+
+      // day_collections 테이블 필수 컬럼 확인
+      for (var col in requiredDayColumns) {
+        if (!dayColumns.any((c) => c['name'] == col)) {
+          throw Exception('day_collections 테이블에 필수 컬럼이 누락되었습니다: $col');
+        }
+      }
+
+      // 데이터 일관성 확인
+      final wordCount = Sqflite.firstIntValue(
+          await db.rawQuery('SELECT COUNT(*) FROM words'));
+
+      final dayCount = Sqflite.firstIntValue(
+          await db.rawQuery('SELECT COUNT(*) FROM day_collections'));
+
+      print('단어 총 개수: $wordCount');
+      print('단어장 총 개수: $dayCount');
+
+      // day별 단어 수 확인
+      final dayWordCounts = await db
+          .rawQuery('SELECT day, COUNT(*) as count FROM words GROUP BY day');
+
+      print('DAY별 단어 수:');
+      for (var row in dayWordCounts) {
+        final day = row['day'] ?? 'NULL';
+        final count = row['count'];
+        print('- $day: $count개');
+      }
+
+      print('===== 저장소 유효성 검증 완료 =====');
+    } catch (e) {
+      print('저장소 유효성 검증 실패: $e');
+      throw e; // 상위 호출자에게 오류 전달
+    }
+  }
+
   // DBService 클래스에 메서드 추가
   Future<void> ensureDatabaseSync() async {
     final db = await database;

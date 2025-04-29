@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../model/word_entry.dart';
 import '../services/tts_service.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
+import 'package:percent_indicator/percent_indicator.dart';
 
 class WordCardWidget extends StatefulWidget {
   final WordEntry word;
@@ -156,6 +157,9 @@ class _WordCardWidgetState extends State<WordCardWidget> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // 퀴즈 및 학습 통계 추가
+                _buildStatisticsSection(),
+                SizedBox(height: 16),
                 if (widget.word.examples.isNotEmpty) ...[
                   const Text(
                     '예문:',
@@ -190,6 +194,186 @@ class _WordCardWidgetState extends State<WordCardWidget> {
         ],
       ),
     );
+  }
+
+    // 통계 정보 섹션 추가
+  Widget _buildStatisticsSection() {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    
+    // 퀴즈 정답률 계산
+    double correctRate = widget.word.quizAttempts > 0 
+        ? widget.word.quizCorrect / widget.word.quizAttempts 
+        : 0.0;
+    
+    return Container(
+      margin: EdgeInsets.only(top: 12, bottom: 12),
+      padding: EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isDarkMode 
+            ? Colors.grey.shade800 
+            : Colors.grey.shade100,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '학습 통계',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 16,
+              color: isDarkMode 
+                  ? Colors.grey.shade300 
+                  : Colors.grey.shade800,
+            ),
+          ),
+          SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              // 복습 횟수
+              _buildStatItem(
+                label: '복습 횟수',
+                value: '${widget.word.reviewCount}회',
+                icon: Icons.refresh,
+                color: Colors.blue,
+              ),
+              
+              // 난이도 표시
+              _buildStatItem(
+                label: '난이도',
+                value: _getDifficultyText(widget.word.difficulty),
+                icon: Icons.trending_up,
+                color: _getDifficultyColor(widget.word.difficulty),
+              ),
+              
+              // 퀴즈 정답률
+              _buildQuizRateIndicator(correctRate),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+    Widget _buildStatItem({
+    required String label,
+    required String value,
+    required IconData icon,
+    required MaterialColor color,
+  }) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    
+    return Column(
+      children: [
+        Row(
+          children: [
+            Icon(
+              icon,
+              size: 14,
+              color: isDarkMode 
+                  ? color.shade300 
+                  : color.shade700,
+            ),
+            SizedBox(width: 4),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                color: isDarkMode 
+                    ? Colors.grey.shade400 
+                    : Colors.grey.shade600,
+              ),
+            ),
+          ],
+        ),
+        SizedBox(height: 4),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: isDarkMode 
+                ? color.shade300 
+                : color.shade700,
+          ),
+        ),
+      ],
+    );
+  }
+  
+  Widget _buildQuizRateIndicator(double rate) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    
+    // 정답률에 따른 색상
+    Color color;
+    if (rate >= 0.8) {
+      color = Colors.green;
+    } else if (rate >= 0.5) {
+      color = Colors.amber;
+    } else {
+      color = Colors.red;
+    }
+    
+    return Column(
+      children: [
+        Text(
+          '정답률',
+          style: TextStyle(
+            fontSize: 12,
+            color: isDarkMode 
+                ? Colors.grey.shade400 
+                : Colors.grey.shade600,
+          ),
+        ),
+        SizedBox(height: 4),
+        CircularPercentIndicator(
+          radius: 24.0,
+          lineWidth: 4.0,
+          percent: rate,
+          center: Text(
+            '${(rate * 100).toInt()}%',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.bold,
+              color: isDarkMode 
+                  ? Colors.white 
+                  : Colors.black87,
+            ),
+          ),
+          progressColor: isDarkMode 
+              ? color.withOpacity(0.7) 
+              : color,
+          backgroundColor: isDarkMode 
+              ? Colors.grey.shade700 
+              : Colors.grey.shade300,
+        ),
+        SizedBox(height: 4),
+        Text(
+          widget.word.quizAttempts > 0 
+              ? '${widget.word.quizCorrect}/${widget.word.quizAttempts}' 
+              : '0/0',
+          style: TextStyle(
+            fontSize: 12,
+            color: isDarkMode 
+                ? Colors.grey.shade400 
+                : Colors.grey.shade600,
+          ),
+        ),
+      ],
+    );
+  }
+  
+  String _getDifficultyText(double difficulty) {
+    if (difficulty >= 0.8) return '상';
+    if (difficulty >= 0.4) return '중';
+    return '하';
+  }
+  
+  MaterialColor _getDifficultyColor(double difficulty) {
+    if (difficulty >= 0.8) return Colors.red;
+    if (difficulty >= 0.4) return Colors.amber;
+    return Colors.green;
   }
 
   Widget _buildSpeakMenu() {

@@ -82,4 +82,80 @@ class StorageService {
     final wordsToKeep = allWords.where((word) => word.day != day).toList();
     await saveWords(wordsToKeep); // saveAllWords() -> saveWords()로 수정
   }
+  // lib/services/storage_service.dart에 추가할 메서드
+
+  // 퀴즈 결과 업데이트
+  Future<void> updateQuizResult(String wordText, bool isCorrect) async {
+    try {
+      // 단어 찾기
+      final word = await getWord(wordText);
+      if (word == null) {
+        print('퀴즈 결과 업데이트 오류: 단어 $wordText를 찾을 수 없음');
+        return;
+      }
+      
+      // 퀴즈 결과 업데이트
+      final updatedWord = word.updateQuizResult(isCorrect);
+      
+      // 저장
+      await saveWord(updatedWord);
+      
+      print('퀴즈 결과 업데이트 성공: $wordText (정답: $isCorrect)');
+    } catch (e) {
+      print('퀴즈 결과 업데이트 오류: $e');
+    }
+  }
+  
+  // 특정 단어의 퀴즈 정보 가져오기
+  Future<Map<String, dynamic>> getWordQuizInfo(String wordText) async {
+    try {
+      final word = await getWord(wordText);
+      if (word == null) {
+        return {
+          'attempts': 0,
+          'correct': 0,
+          'rate': 0.0,
+          'difficulty': 0.5,
+        };
+      }
+      
+      return {
+        'attempts': word.quizAttempts,
+        'correct': word.quizCorrect,
+        'rate': word.getCorrectRate(),
+        'difficulty': word.difficulty,
+      };
+    } catch (e) {
+      print('단어 퀴즈 정보 조회 오류: $e');
+      return {
+        'attempts': 0,
+        'correct': 0,
+        'rate': 0.0,
+        'difficulty': 0.5,
+      };
+    }
+  }
+  
+  // 특정 단어장의 평균 퀴즈 정답률 계산
+  Future<double> getDayCollectionAverageQuizRate(String day) async {
+    try {
+      final words = await getWordsByDay(day);
+      if (words.isEmpty) return 0.0;
+      
+      double totalRate = 0.0;
+      int wordCount = 0;
+      
+      for (var word in words) {
+        if (word.quizAttempts > 0) {
+          totalRate += word.getCorrectRate();
+          wordCount++;
+        }
+      }
+      
+      return wordCount > 0 ? totalRate / wordCount : 0.0;
+    } catch (e) {
+      print('단어장 퀴즈 정답률 계산 오류: $e');
+      return 0.0;
+    }
+  }
 }

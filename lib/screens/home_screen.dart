@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:vocabulary_app/screens/manual_word_add_screen.dart';
 import 'package:vocabulary_app/screens/purchase_screen.dart';
+import 'package:vocabulary_app/screens/smart_study_screen.dart';
 import 'package:vocabulary_app/screens/word_edit_screen.dart';
 import 'package:vocabulary_app/services/ad_service.dart';
 import 'package:vocabulary_app/services/purchase_service.dart';
@@ -60,7 +61,7 @@ class _HomePageState extends State<HomePage>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _tabController = TabController(length: 4, vsync: this);
+    _tabController = TabController(length: 5, vsync: this);
     _tabController.addListener(() {
       // 변경 이벤트가 발생할 때마다 UI 업데이트
       if (!mounted) return;
@@ -176,6 +177,80 @@ class _HomePageState extends State<HomePage>
       // 돌아왔을 때 사용량 갱신
       _loadRemainingUsages();
     });
+  }
+
+  // 퀴즈 결과 업데이트 메서드 추가
+  Future<void> _updateQuizResult(WordEntry word, bool isCorrect) async {
+    try {
+      // 퀴즈 결과 업데이트된 단어 생성
+      final updatedWord = word.updateQuizResult(isCorrect);
+
+      // 저장소에 업데이트
+      await _storageService.saveWord(updatedWord);
+
+      // 메모리에서도 업데이트
+      setState(() {
+        final wordIndex = _dayCollections[_currentDay]
+            ?.indexWhere((w) => w.word == word.word);
+
+        if (wordIndex != null && wordIndex >= 0) {
+          _dayCollections[_currentDay]![wordIndex] = updatedWord;
+        }
+      });
+
+      print('퀴즈 결과 업데이트 완료: ${word.word} (정답: $isCorrect)');
+    } catch (e) {
+      print('퀴즈 결과 업데이트 중 오류: $e');
+    }
+  }
+
+// 단어 암기 상태 업데이트 메서드 (기존 _updateMemorizedStatus 메서드 수정 또는 추가)
+  Future<void> _updateWordMemorizedStatus(WordEntry word) async {
+    try {
+      // 암기 상태 토글
+      final newStatus = !word.isMemorized;
+
+      // 저장소 업데이트
+      await _storageService.updateMemorizedStatus(word.word, newStatus);
+
+      // 메모리 업데이트
+      setState(() {
+        final wordIndex = _dayCollections[_currentDay]
+            ?.indexWhere((w) => w.word == word.word);
+
+        if (wordIndex != null && wordIndex >= 0) {
+          _dayCollections[_currentDay]![wordIndex] =
+              word.copyWith(isMemorized: newStatus);
+        }
+      });
+
+      // 완료 메시지
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(newStatus ? '암기 완료로 설정됨' : '암기 해제됨'),
+          behavior: SnackBarBehavior.floating,
+          duration: Duration(seconds: 1),
+        ),
+      );
+    } catch (e) {
+      print('암기 상태 업데이트 중 오류: $e');
+    }
+  }
+
+// 스마트 학습 화면 실행 메서드
+  void _openSmartStudy() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => SmartStudyScreen(
+          words: _dayCollections[_currentDay] ?? [],
+          dayName: _currentDay,
+          onSpeakWord: _speakWord,
+          onWordMemorized: _updateWordMemorizedStatus,
+          onQuizAnswered: _updateQuizResult,
+        ),
+      ),
+    );
   }
 
   // 2. _navigateToManualWordAdd 메소드 추가
@@ -1187,6 +1262,7 @@ class _HomePageState extends State<HomePage>
                   _tabController.animateTo(1);
                   setState(() => _isFabExpanded = true);
                 },
+                onSmartStudyStart: _openSmartStudy, // 추가: 스마트 학습 시작 콜백
               ),
 
               WordListTab(
@@ -1198,10 +1274,52 @@ class _HomePageState extends State<HomePage>
                   });
                 },
                 navigateToCaptureTab: () {
-                  _tabController.animateTo(0);
+                  _tabController.animateTo(1);
                 },
                 onSpeakWord: _speakWord,
                 storageService: _storageService,
+              ),
+
+              // 스마트 학습 탭 (새로 추가)
+              Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.psychology,
+                      size: 80,
+                      color: isDarkMode
+                          ? Colors.amber.shade300
+                          : Colors.amber.shade200,
+                    ),
+                    SizedBox(height: 24),
+                    Text(
+                      '스마트 학습 시작하기',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: _openSmartStudy,
+                      style: ElevatedButton.styleFrom(
+                        padding:
+                            EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        backgroundColor: isDarkMode
+                            ? Colors.amber.shade300
+                            : Colors.amber.shade700,
+                        foregroundColor: isDarkMode
+                            ? Colors.black
+                            : Colors.white, // 텍스트 색상  
+                      ),
+                      child: Text('시작하기'),
+                    ),
+                  ],
+                ),
               ),
 
               FlashCardTab(
@@ -1278,6 +1396,10 @@ class _HomePageState extends State<HomePage>
                   BottomNavigationBarItem(
                     icon: Icon(Icons.book),
                     label: '단어장',
+                  ),
+                  BottomNavigationBarItem(
+                    icon: Icon(Icons.psychology), // 스마트 학습 아이콘 (추가)
+                    label: '스마트 학습', // 스마트 학습 라벨 (추가)
                   ),
                   BottomNavigationBarItem(
                     icon: Icon(Icons.flip_to_front), // 더 적절한 아이콘으로 변경

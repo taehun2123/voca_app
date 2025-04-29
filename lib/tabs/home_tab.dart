@@ -11,6 +11,7 @@ class HomeTab extends StatefulWidget {
   final Function(String) onDayChanged;
   final Function() navigateToWordTab;
   final Function() onAddWord;
+  final Function() onSmartStudyStart;
 
   const HomeTab({
     Key? key,
@@ -19,6 +20,7 @@ class HomeTab extends StatefulWidget {
     required this.onDayChanged,
     required this.navigateToWordTab,
     required this.onAddWord,
+    required this.onSmartStudyStart,
   }) : super(key: key);
 
   @override
@@ -524,6 +526,84 @@ class _HomeTabState extends State<HomeTab> {
                     ),
                   ),
                   SizedBox(height: 24),
+
+                  // 여기서부터 스마트 학습 카드 추가
+                  Card(
+                    elevation: 4,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: InkWell(
+                      onTap: widget.onSmartStudyStart,
+                      borderRadius: BorderRadius.circular(16),
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  padding: EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: isDarkMode
+                                        ? Colors.blue.shade900.withOpacity(0.3)
+                                        : Colors.blue.shade50,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Icon(
+                                    Icons.psychology,
+                                    color: isDarkMode
+                                        ? Colors.blue.shade300
+                                        : Colors.blue.shade700,
+                                    size: 28,
+                                  ),
+                                ),
+                                SizedBox(width: 16),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        '스마트 학습',
+                                        style: TextStyle(
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.bold,
+                                          color: isDarkMode
+                                              ? Colors.blue.shade300
+                                              : Colors.blue.shade700,
+                                        ),
+                                      ),
+                                      SizedBox(height: 4),
+                                      Text(
+                                        '맞춤형 학습으로 효율적인 단어 암기',
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          color: isDarkMode
+                                              ? Colors.grey.shade300
+                                              : Colors.grey.shade700,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Icon(
+                                  Icons.arrow_forward_ios,
+                                  color: isDarkMode
+                                      ? Colors.blue.shade300
+                                      : Colors.blue.shade700,
+                                  size: 16,
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: 24),
+// 여기까지 스마트 학습 카드
 
                   // 캘린더
                   Card(

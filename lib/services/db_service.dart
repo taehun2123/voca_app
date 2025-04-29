@@ -15,31 +15,31 @@ class DBService {
     return _database!;
   }
 
-Future<Database> _initDatabase() async {
-  // 앱 문서 디렉토리 경로 얻기
-  final documentsDirectory = await getApplicationDocumentsDirectory();
-  String path = join(documentsDirectory.path, 'vocabulary.db');
-  
-  print('데이터베이스 경로: $path');
-  
-  // 해당 경로에 파일이 있는지 확인
-  final file = File(path);
-  final exists = await file.exists();
-  print('데이터베이스 파일 존재 여부: $exists');
-  
-  // WAL 모드 설정 제거 (오류 발생)
-  final db = await openDatabase(
-    path,
-    version: 1,
-    onCreate: _createDatabase,
-  );
-  
-  // 기본 동기화 설정만 사용
-  await db.execute('PRAGMA synchronous = NORMAL');
-  print('데이터베이스 동기화 설정 완료');
-  
-  return db;
-}
+  Future<Database> _initDatabase() async {
+    // 앱 문서 디렉토리 경로 얻기
+    final documentsDirectory = await getApplicationDocumentsDirectory();
+    String path = join(documentsDirectory.path, 'vocabulary.db');
+
+    print('데이터베이스 경로: $path');
+
+    // 해당 경로에 파일이 있는지 확인
+    final file = File(path);
+    final exists = await file.exists();
+    print('데이터베이스 파일 존재 여부: $exists');
+
+    // WAL 모드 설정 제거 (오류 발생)
+    final db = await openDatabase(
+      path,
+      version: 1,
+      onCreate: _createDatabase,
+    );
+
+    // 기본 동기화 설정만 사용
+    await db.execute('PRAGMA synchronous = NORMAL');
+    print('데이터베이스 동기화 설정 완료');
+
+    return db;
+  }
 
   Future<void> _createDatabase(Database db, int version) async {
     print('데이터베이스 테이블 생성 시작');
@@ -112,61 +112,63 @@ Future<Database> _initDatabase() async {
   // 여러 단어 저장
 // 여러 단어 저장 함수 수정
 // lib/services/db_service.dart의 saveWords 함수 수정
-Future<void> saveWords(List<WordEntry> words) async {
-  final Database db = await database;
-  
-  print('${words.length}개 단어 저장 시작');
-  
-  int successCount = 0;
-  int failCount = 0;
-  
-  // 각 단어별로 상세 로그 출력
-  for (var word in words) {
+  Future<void> saveWords(List<WordEntry> words) async {
+    final Database db = await database;
+
+    print('${words.length}개 단어 저장 시작');
+
+    int successCount = 0;
+    int failCount = 0;
+
+    // 각 단어별로 상세 로그 출력
+    for (var word in words) {
+      try {
+        print('단어 저장: "${word.word}", day: "${word.day ?? '없음'}"');
+
+        await db.insert(
+          'words',
+          {
+            'word': word.word,
+            'pronunciation': word.pronunciation,
+            'meaning': word.meaning,
+            'examples': jsonEncode(word.examples),
+            'commonPhrases': jsonEncode(word.commonPhrases),
+            'day': word.day,
+            'createdAt': word.createdAt.millisecondsSinceEpoch,
+            'reviewCount': word.reviewCount,
+            'isMemorized': word.isMemorized ? 1 : 0,
+          },
+          conflictAlgorithm: ConflictAlgorithm.replace,
+        );
+        successCount++;
+      } catch (e) {
+        failCount++;
+        print('단어 저장 오류 (${word.word}): $e');
+      }
+    }
+
+    // 저장 결과 출력
+    print('단어 저장 결과: 성공 $successCount개, 실패 $failCount개');
+
+    // 저장 후 단어 수 확인
     try {
-      print('단어 저장: "${word.word}", day: "${word.day ?? '없음'}"');
-      
-      await db.insert(
-        'words',
-        {
-          'word': word.word,
-          'pronunciation': word.pronunciation,
-          'meaning': word.meaning,
-          'examples': jsonEncode(word.examples),
-          'commonPhrases': jsonEncode(word.commonPhrases),
-          'day': word.day,
-          'createdAt': word.createdAt.millisecondsSinceEpoch,
-          'reviewCount': word.reviewCount,
-          'isMemorized': word.isMemorized ? 1 : 0,
-        },
-        conflictAlgorithm: ConflictAlgorithm.replace,
-      );
-      successCount++;
+      final count = Sqflite.firstIntValue(
+          await db.rawQuery('SELECT COUNT(*) FROM words'));
+      print('저장 후 단어 테이블 레코드 수: $count');
+
+      // day별 단어 수 출력
+      final dayQuery = await db
+          .rawQuery('SELECT day, COUNT(*) as count FROM words GROUP BY day');
+      print('DAY별 단어 수:');
+      for (var row in dayQuery) {
+        final day = row['day'] ?? '없음';
+        final count = row['count'];
+        print('- $day: $count개');
+      }
     } catch (e) {
-      failCount++;
-      print('단어 저장 오류 (${word.word}): $e');
+      print('단어 수 확인 중 오류: $e');
     }
   }
-  
-  // 저장 결과 출력
-  print('단어 저장 결과: 성공 $successCount개, 실패 $failCount개');
-  
-  // 저장 후 단어 수 확인
-  try {
-    final count = Sqflite.firstIntValue(await db.rawQuery('SELECT COUNT(*) FROM words'));
-    print('저장 후 단어 테이블 레코드 수: $count');
-    
-    // day별 단어 수 출력
-    final dayQuery = await db.rawQuery('SELECT day, COUNT(*) as count FROM words GROUP BY day');
-    print('DAY별 단어 수:');
-    for (var row in dayQuery) {
-      final day = row['day'] ?? '없음';
-      final count = row['count'];
-      print('- $day: $count개');
-    }
-  } catch (e) {
-    print('단어 수 확인 중 오류: $e');
-  }
-}
 
   // 단어 가져오기
   Future<WordEntry?> getWord(String wordText) async {
@@ -198,7 +200,6 @@ Future<void> saveWords(List<WordEntry> words) async {
       return null;
     }
   }
-  
 
 // 모든 단어 가져오기 함수 수정
   Future<List<WordEntry>> getAllWords() async {
@@ -254,49 +255,51 @@ Future<void> saveWords(List<WordEntry> words) async {
 
   // DAY별 단어 가져오기
 // lib/services/db_service.dart에 메서드 추가
-Future<List<WordEntry>> getWordsByDay(String? day) async {
-  final Database db = await database;
-  
-  List<Map<String, dynamic>> maps;
-  if (day == null) {
-    // day가 null인 단어들 조회
-    maps = await db.query(
-      'words',
-      where: 'day IS NULL',
-    );
-    print('day가 null인 단어 조회: ${maps.length}개');
-  } else {
-    // 특정 day의 단어들 조회
-    maps = await db.query(
-      'words',
-      where: 'day = ?',
-      whereArgs: [day],
-    );
-    print('day가 "$day"인 단어 조회: ${maps.length}개');
-  }
-  
-  List<WordEntry> words = [];
-  
-  for (var map in maps) {
-    try {
-      words.add(WordEntry(
-        word: map['word'] as String,
-        pronunciation: map['pronunciation'] as String? ?? '',
-        meaning: map['meaning'] as String,
-        examples: List<String>.from(jsonDecode(map['examples'] as String)),
-        commonPhrases: List<String>.from(jsonDecode(map['commonPhrases'] as String)),
-        day: map['day'] as String?,
-        createdAt: DateTime.fromMillisecondsSinceEpoch(map['createdAt'] as int),
-        reviewCount: map['reviewCount'] as int,
-        isMemorized: (map['isMemorized'] as int) == 1,
-      ));
-    } catch (e) {
-      print('단어 파싱 오류: $e');
+  Future<List<WordEntry>> getWordsByDay(String? day) async {
+    final Database db = await database;
+
+    List<Map<String, dynamic>> maps;
+    if (day == null) {
+      // day가 null인 단어들 조회
+      maps = await db.query(
+        'words',
+        where: 'day IS NULL',
+      );
+      print('day가 null인 단어 조회: ${maps.length}개');
+    } else {
+      // 특정 day의 단어들 조회
+      maps = await db.query(
+        'words',
+        where: 'day = ?',
+        whereArgs: [day],
+      );
+      print('day가 "$day"인 단어 조회: ${maps.length}개');
     }
+
+    List<WordEntry> words = [];
+
+    for (var map in maps) {
+      try {
+        words.add(WordEntry(
+          word: map['word'] as String,
+          pronunciation: map['pronunciation'] as String? ?? '',
+          meaning: map['meaning'] as String,
+          examples: List<String>.from(jsonDecode(map['examples'] as String)),
+          commonPhrases:
+              List<String>.from(jsonDecode(map['commonPhrases'] as String)),
+          day: map['day'] as String?,
+          createdAt:
+              DateTime.fromMillisecondsSinceEpoch(map['createdAt'] as int),
+          reviewCount: map['reviewCount'] as int,
+          isMemorized: (map['isMemorized'] as int) == 1,
+        ));
+      } catch (e) {
+        print('단어 파싱 오류: $e');
+      }
+    }
+
+    return words;
   }
-  
-  return words;
-}
 
   // DAY 컬렉션 정보 저장
   Future<void> saveDayCollection(String day, int wordCount) async {
@@ -336,80 +339,76 @@ Future<List<WordEntry>> getWordsByDay(String? day) async {
 
   // 단어 삭제
 // lib/services/db_service.dart의 deleteWord 함수 수정
-Future<void> deleteWord(String wordText) async {
-  final Database db = await database;
-  
-  try {
-    // 삭제 전 단어 확인
-    final word = await getWord(wordText);
-    if (word == null) {
-      print('삭제할 단어를 찾을 수 없음: $wordText');
-      return;
+  Future<void> deleteWord(String wordText) async {
+    final Database db = await database;
+
+    try {
+      // 삭제 전 단어 확인
+      final word = await getWord(wordText);
+      if (word == null) {
+        print('삭제할 단어를 찾을 수 없음: $wordText');
+        return;
+      }
+
+      print('단어 삭제: $wordText (day: ${word.day ?? 'null'})');
+
+      // 단어 삭제
+      final count = await db.delete(
+        'words',
+        where: 'word = ?',
+        whereArgs: [wordText],
+      );
+
+      print('단어 삭제 결과: ${count > 0 ? "성공" : "실패"} ($wordText)');
+    } catch (e) {
+      print('단어 삭제 중 오류: $e');
+      throw e;
     }
-    
-    print('단어 삭제: $wordText (day: ${word.day ?? 'null'})');
-    
-    // 단어 삭제
-    final count = await db.delete(
-      'words',
-      where: 'word = ?',
-      whereArgs: [wordText],
-    );
-    
-    print('단어 삭제 결과: ${count > 0 ? "성공" : "실패"} ($wordText)');
-  } catch (e) {
-    print('단어 삭제 중 오류: $e');
-    throw e;
   }
-}
 
   // DAY 삭제
 // lib/services/db_service.dart의 deleteDay 함수 수정
-Future<void> deleteDay(String day) async {
-  final Database db = await database;
-  
-  try {
-    // 트랜잭션 사용하여 모든 작업이 성공하거나 실패하도록 보장
-    await db.transaction((txn) async {
-      // 1. 먼저 삭제할 단어의 개수 확인 (디버깅 용도)
-      final List<Map<String, dynamic>> wordCount = await txn.rawQuery(
-        'SELECT COUNT(*) as count FROM words WHERE day = ?',
-        [day]
-      );
-      final int count = Sqflite.firstIntValue(wordCount) ?? 0;
-      print('단어장 "$day" 삭제: $count개 단어 삭제 예정');
-      
-      // 2. 해당 DAY에 속한 단어들 삭제
-      final int deletedWordsCount = await txn.delete(
-        'words',
-        where: 'day = ?',
-        whereArgs: [day],
-      );
-      print('단어장 "$day" 삭제: $deletedWordsCount개 단어 삭제됨');
-      
-      // 3. DAY 컬렉션 정보 삭제
-      final int deletedDayCount = await txn.delete(
-        'day_collections',
-        where: 'day = ?',
-        whereArgs: [day],
-      );
-      print('단어장 "$day" 삭제: 컬렉션 정보 ${deletedDayCount > 0 ? "삭제됨" : "삭제 실패"}');
-      
-      // 4. 삭제 후 확인 쿼리 (디버깅 용도)
-      final List<Map<String, dynamic>> remainingCheck = await txn.rawQuery(
-        'SELECT COUNT(*) as count FROM words WHERE day = ?',
-        [day]
-      );
-      final int remaining = Sqflite.firstIntValue(remainingCheck) ?? 0;
-      print('단어장 "$day" 삭제 후 남은 단어: $remaining개');
-    });
-    
-    print('단어장 "$day" 삭제 완료');
-  } catch (e) {
-    print('단어장 삭제 중 오류: $e');
-    throw e; // 오류를 상위로 전달하여 UI에서 처리할 수 있도록 함
+  Future<void> deleteDay(String day) async {
+    final Database db = await database;
+
+    try {
+      // 트랜잭션 사용하여 모든 작업이 성공하거나 실패하도록 보장
+      await db.transaction((txn) async {
+        // 1. 먼저 삭제할 단어의 개수 확인 (디버깅 용도)
+        final List<Map<String, dynamic>> wordCount = await txn.rawQuery(
+            'SELECT COUNT(*) as count FROM words WHERE day = ?', [day]);
+        final int count = Sqflite.firstIntValue(wordCount) ?? 0;
+        print('단어장 "$day" 삭제: $count개 단어 삭제 예정');
+
+        // 2. 해당 DAY에 속한 단어들 삭제
+        final int deletedWordsCount = await txn.delete(
+          'words',
+          where: 'day = ?',
+          whereArgs: [day],
+        );
+        print('단어장 "$day" 삭제: $deletedWordsCount개 단어 삭제됨');
+
+        // 3. DAY 컬렉션 정보 삭제
+        final int deletedDayCount = await txn.delete(
+          'day_collections',
+          where: 'day = ?',
+          whereArgs: [day],
+        );
+        print('단어장 "$day" 삭제: 컬렉션 정보 ${deletedDayCount > 0 ? "삭제됨" : "삭제 실패"}');
+
+        // 4. 삭제 후 확인 쿼리 (디버깅 용도)
+        final List<Map<String, dynamic>> remainingCheck = await txn.rawQuery(
+            'SELECT COUNT(*) as count FROM words WHERE day = ?', [day]);
+        final int remaining = Sqflite.firstIntValue(remainingCheck) ?? 0;
+        print('단어장 "$day" 삭제 후 남은 단어: $remaining개');
+      });
+
+      print('단어장 "$day" 삭제 완료');
+    } catch (e) {
+      print('단어장 삭제 중 오류: $e');
+      throw e; // 오류를 상위로 전달하여 UI에서 처리할 수 있도록 함
+    }
   }
-}
 
   // 암기 상태 업데이트
   Future<void> updateMemorizedStatus(String wordText, bool isMemorized) async {
@@ -494,27 +493,136 @@ Future<void> deleteDay(String day) async {
   }
 
   // lib/services/db_service.dart에 메서드 추가
-Future<void> deleteNullDayWords() async {
-  final Database db = await database;
-  
-  try {
-    // 삭제할 단어 수 확인
-    final List<Map<String, dynamic>> countResult = await db.rawQuery(
-      'SELECT COUNT(*) as count FROM words WHERE day IS NULL'
-    );
-    final int count = Sqflite.firstIntValue(countResult) ?? 0;
-    print('day가 null인 단어 삭제 시작: $count개');
-    
-    // 단어 삭제
-    final deletedCount = await db.delete(
-      'words',
-      where: 'day IS NULL'
-    );
-    
-    print('day가 null인 단어 삭제 완료: $deletedCount개 단어 삭제됨');
-  } catch (e) {
-    print('day가 null인 단어 삭제 중 오류: $e');
-    throw e;
+  Future<void> deleteNullDayWords() async {
+    final Database db = await database;
+
+    try {
+      // 삭제할 단어 수 확인
+      final List<Map<String, dynamic>> countResult = await db
+          .rawQuery('SELECT COUNT(*) as count FROM words WHERE day IS NULL');
+      final int count = Sqflite.firstIntValue(countResult) ?? 0;
+      print('day가 null인 단어 삭제 시작: $count개');
+
+      // 단어 삭제
+      final deletedCount = await db.delete('words', where: 'day IS NULL');
+
+      print('day가 null인 단어 삭제 완료: $deletedCount개 단어 삭제됨');
+    } catch (e) {
+      print('day가 null인 단어 삭제 중 오류: $e');
+      throw e;
+    }
   }
-}
+  // lib/services/db_service.dart에 추가할 메서드
+
+  // 퀴즈 결과 업데이트
+  Future<void> updateQuizResult(String wordText, bool isCorrect) async {
+    final Database db = await database;
+
+    try {
+      // 현재 단어 정보 가져오기
+      final List<Map<String, dynamic>> maps = await db.query(
+        'words',
+        where: 'word = ?',
+        whereArgs: [wordText],
+      );
+
+      if (maps.isEmpty) return; // 단어가 없으면 무시
+
+      // 퀴즈 시도 횟수 및 정답 횟수 업데이트
+      final word = WordEntry.fromMap(maps.first);
+      final updatedWord = word.updateQuizResult(isCorrect);
+
+      // 업데이트
+      await db.update(
+        'words',
+        {
+          'quizAttempts': updatedWord.quizAttempts,
+          'quizCorrect': updatedWord.quizCorrect,
+          'difficulty': updatedWord.difficulty,
+        },
+        where: 'word = ?',
+        whereArgs: [wordText],
+      );
+
+      print('퀴즈 결과 DB 업데이트 성공: $wordText (정답: $isCorrect)');
+    } catch (e) {
+      print('퀴즈 결과 DB 업데이트 오류: $e');
+    }
+  }
+
+  // 퀴즈 난이도 순으로 단어 가져오기
+  Future<List<WordEntry>> getWordsByDifficulty(String day,
+      {bool descending = true, int limit = 20}) async {
+    final Database db = await database;
+
+    try {
+      String orderBy = descending ? 'difficulty DESC' : 'difficulty ASC';
+      String whereClause = day != null ? 'day = ?' : 'day IS NULL';
+      List<dynamic> whereArgs = day != null ? [day] : [];
+
+      final List<Map<String, dynamic>> maps = await db.query(
+        'words',
+        where: whereClause,
+        whereArgs: whereArgs,
+        orderBy: orderBy,
+        limit: limit,
+      );
+
+      return maps.map((map) => WordEntry.fromMap(map)).toList();
+    } catch (e) {
+      print('난이도 기준 단어 조회 오류: $e');
+      return [];
+    }
+  }
+
+  // 퀴즈 정답률이 낮은 순으로 단어 가져오기
+  Future<List<WordEntry>> getWordsByLowCorrectRate(String day,
+      {int limit = 20}) async {
+    final Database db = await database;
+
+    try {
+      String whereClause = day != null
+          ? 'day = ? AND quizAttempts > 0'
+          : 'day IS NULL AND quizAttempts > 0';
+      List<dynamic> whereArgs = day != null ? [day] : [];
+
+      // quizCorrect / quizAttempts의 비율이 낮은 순 (틀린 비율이 높은 순)
+      // * 100을 통해 백분율로 변환 후 정렬
+      final List<Map<String, dynamic>> maps = await db.rawQuery('''
+        SELECT * FROM words
+        WHERE $whereClause
+        ORDER BY (CAST(quizCorrect AS REAL) / CAST(quizAttempts AS REAL)) * 100 ASC
+        LIMIT $limit
+      ''', whereArgs);
+
+      return maps.map((map) => WordEntry.fromMap(map)).toList();
+    } catch (e) {
+      print('정답률 기준 단어 조회 오류: $e');
+      return [];
+    }
+  }
+
+  // 퀴즈 시도 횟수가 적은 순으로 단어 가져오기 (덜 학습된 단어)
+  Future<List<WordEntry>> getWordsByLowAttempts(String day,
+      {int limit = 20}) async {
+    final Database db = await database;
+
+    try {
+      String whereClause = day != null ? 'day = ?' : 'day IS NULL';
+      List<dynamic> whereArgs = day != null ? [day] : [];
+
+      final List<Map<String, dynamic>> maps = await db.query(
+        'words',
+        where: whereClause,
+        whereArgs: whereArgs,
+        orderBy: 'quizAttempts ASC',
+        limit: limit,
+      );
+
+      return maps.map((map) => WordEntry.fromMap(map)).toList();
+    } catch (e) {
+      print('시도 횟수 기준 단어 조회 오류: $e');
+      return [];
+    }
+  }
 }

@@ -1,6 +1,7 @@
 // lib/screens/tabs/quiz_tab.dart
 import 'package:flutter/material.dart';
 import 'package:vocabulary_app/model/word_entry.dart';
+import 'package:vocabulary_app/screens/direct_input_quiz_screen.dart';
 import 'package:vocabulary_app/services/tts_service.dart';
 import 'package:vocabulary_app/screens/modern_quiz_card_screen.dart';
 
@@ -28,7 +29,40 @@ class QuizTab extends StatefulWidget {
   State<QuizTab> createState() => _QuizTabState();
 }
 
-class _QuizTabState extends State<QuizTab> {
+class _QuizTabState extends State<QuizTab> with SingleTickerProviderStateMixin {
+  late TabController _tabController; // 추가
+  // 퀴즈 모드
+  final List<String> _quizModes = [
+    '객관식 퀴즈',
+    '주관식 퀴즈',
+  ];
+  
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: _quizModes.length, vsync: this);
+  }
+  
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+  
+  // 퀴즈 결과 업데이트 콜백
+  Future<void> _onQuizAnswered(WordEntry word, bool isCorrect) async {
+    try {
+      // 단어 업데이트
+      final updatedWord = word.updateQuizResult(isCorrect);
+      
+      // 저장소에 저장 (부모로부터 전달받은 콜백 활용)
+      // 여기서는 간단히 콘솔에 로그만 출력
+      print('퀴즈 결과 업데이트: ${word.word}, 정답: $isCorrect');
+    } catch (e) {
+      print('퀴즈 결과 업데이트 중 오류: $e');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (widget.dayCollections.isEmpty) {
@@ -39,12 +73,52 @@ class _QuizTabState extends State<QuizTab> {
     return Column(
       children: [
         _buildDaySelector(),
-        // 퀴즈 내용
+                // 퀴즈 모드 선택 탭 (추가)
+        Container(
+          decoration: BoxDecoration(
+            color: Theme.of(context).cardColor,
+            boxShadow: [
+              BoxShadow(
+                color: Theme.of(context).shadowColor.withOpacity(0.1),
+                blurRadius: 4,
+                offset: Offset(0, 2),
+              ),
+            ],
+          ),
+          child: TabBar(
+            controller: _tabController,
+            tabs: _quizModes.map((mode) => Tab(text: mode)).toList(),
+            labelColor: Theme.of(context).brightness == Brightness.dark
+                ? Colors.amber.shade300
+                : Colors.amber.shade700,
+            unselectedLabelColor: Theme.of(context).brightness == Brightness.dark
+                ? Colors.grey.shade400
+                : Colors.grey.shade600,
+            indicatorColor: Theme.of(context).brightness == Brightness.dark
+                ? Colors.amber.shade300
+                : Colors.amber.shade700,
+          ),
+        ),
+        
+        // 퀴즈 화면 (추가)
         Expanded(
-          child: ModernQuizScreen(
-            words: widget.dayCollections[widget.currentDay] ?? [],
-            allWords: widget.allWords,
-            onSpeakWord: widget.onSpeakWord,
+          child: TabBarView(
+            controller: _tabController,
+            children: [
+              // 객관식 퀴즈 화면 (기존)
+              ModernQuizScreen(
+                words: widget.dayCollections[widget.currentDay] ?? [],
+                allWords: widget.allWords,
+                onSpeakWord: widget.onSpeakWord,
+              ),
+              
+              // 주관식 퀴즈 화면 (추가)
+              DirectInputQuizScreen(
+                words: widget.dayCollections[widget.currentDay] ?? [],
+                onSpeakWord: widget.onSpeakWord,
+                onQuizAnswered: _onQuizAnswered,
+              ),
+            ],
           ),
         ),
       ],

@@ -640,7 +640,9 @@ class _BackupScreenState extends State<BackupScreen> {
         final id = backup['id'] as String;
         final name = backup['name'] as String;
         final date = backup['date'] as DateTime;
-        final size = backup['size'] as num;
+        final size = backup['size'];
+        num parsedSize = size is num ? size : num.tryParse(size.toString()) ?? 0;
+
         
         // 날짜 포맷
         final dateFormat = DateFormat('yyyy년 MM월 dd일 HH:mm');
@@ -648,12 +650,12 @@ class _BackupScreenState extends State<BackupScreen> {
         
         // 파일 크기 포맷
         String sizeText;
-        if (size < 1024) {
-          sizeText = '$size B';
-        } else if (size < 1024 * 1024) {
-          sizeText = '${(size / 1024).toStringAsFixed(1)} KB';
+        if (parsedSize < 1024) {
+          sizeText = '$parsedSize B';
+        } else if (parsedSize < 1024 * 1024) {
+          sizeText = '${(parsedSize / 1024).toStringAsFixed(1)} KB';
         } else {
-          sizeText = '${(size / (1024 * 1024)).toStringAsFixed(1)} MB';
+          sizeText = '${(parsedSize / (1024 * 1024)).toStringAsFixed(1)} MB';
         }
         
         return Card(

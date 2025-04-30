@@ -18,6 +18,6 @@ class AppConstants {
   static const String appVersion = '1.0.0';
   
   // OpenAI 모델 설정
-  static const String openAiModel = 'gpt-4o-mini'; // 또는 gpt-4o
+  static const String openAiModel = 'gpt-4.1-mini'; 
   static const int maxTokens = 4000;
 }

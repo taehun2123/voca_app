@@ -1,4 +1,4 @@
-// lib/services/backup_service.dart
+// lib/services/backup_service.dart 수정
 import 'dart:io';
 import 'dart:convert';
 import 'package:flutter/material.dart';
@@ -35,9 +35,8 @@ class BackupService {
   // 로컬 설정 저장용 키
   static const String _lastBackupTimeKey = 'last_backup_time';
   static const String _lastBackupNameKey = 'last_backup_name';
-  static const String _backupFolderIdKey = 'backup_folder_id';
-
-  // 앱 백업 폴더 이름
+  
+  // 앱 백업 폴더 이름 (변경하지 말 것 - 모든 기기에서 동일해야 함)
   static const String _appFolderName = '찍어보카_백업';
 
   // 로그인 및 Drive API 클라이언트 얻기
@@ -107,45 +106,35 @@ class BackupService {
 
   // 앱 전용 백업 폴더 ID 가져오기 (없으면 생성)
   Future<String?> _getOrCreateBackupFolder() async {
-    // 로컬에 저장된 폴더 ID 확인
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    String? folderId = prefs.getString(_backupFolderIdKey);
-
-    // 폴더 ID가 있으면 유효한지 확인
     final driveApi = await _getDriveApi();
     if (driveApi == null) return null;
 
-    if (folderId != null) {
-      try {
-        // 폴더가 실제로 존재하는지 확인
-        await driveApi.files.get(folderId);
-        return folderId;
-      } catch (e) {
-        print('기존 백업 폴더를 찾을 수 없음: $e');
-        // 폴더를 찾을 수 없으면 새로 생성
-        folderId = null;
-      }
-    }
-
-    // 폴더 생성
     try {
+      // 이름으로 폴더 검색 - 수정된 부분
+      String query = "name = '$_appFolderName' and mimeType = 'application/vnd.google-apps.folder' and trashed = false";
+      final response = await driveApi.files.list(
+        q: query,
+        $fields: 'files(id, name)',
+      );
+
+      final files = response.files;
+      if (files != null && files.isNotEmpty) {
+        // 이미 존재하는 폴더 사용
+        print('기존 백업 폴더 찾음: ${files.first.id}');
+        return files.first.id;
+      }
+
+      // 폴더가 없으면 새로 생성
       final folder = drive.File(
         name: _appFolderName,
         mimeType: 'application/vnd.google-apps.folder',
       );
 
       final createdFolder = await driveApi.files.create(folder);
-      folderId = createdFolder.id;
-
-      // 로컬에 폴더 ID 저장
-      if (folderId != null) {
-        await prefs.setString(_backupFolderIdKey, folderId);
-      }
-
-      print('백업 폴더 생성됨: $folderId');
-      return folderId;
+      print('백업 폴더 생성됨: ${createdFolder.id}');
+      return createdFolder.id;
     } catch (e) {
-      print('백업 폴더 생성 오류: $e');
+      print('백업 폴더 조회/생성 오류: $e');
       return null;
     }
   }
@@ -252,7 +241,7 @@ class BackupService {
         return backups;
       }
 
-      // 백업 폴더 ID 확인
+      // 백업 폴더 ID 확인 - 폴더가 없으면 빈 목록 반환
       final folderId = await _getOrCreateBackupFolder();
       if (folderId == null) {
         print('백업 폴더를 찾을 수 없음');
@@ -285,6 +274,7 @@ class BackupService {
         }
       }
 
+      print('백업 목록 가져오기 성공: ${backups.length}개 파일');
       return backups;
     } catch (e) {
       print('백업 목록 가져오기 오류: $e');

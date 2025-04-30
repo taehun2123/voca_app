@@ -1,4 +1,4 @@
-// lib/services/openai_vision_service.dart (수정)
+// lib/services/openai_vision_service.dart (개선)
 
 import 'dart:convert';
 import 'dart:io';
@@ -10,11 +10,10 @@ import '../utils/constants.dart';
 class OpenAIVisionService {
   final String _apiUrl = 'https://api.openai.com/v1/chat/completions';
 
-  // 이미지 파일에서 단어 추출 (사용량 체크 추가)
+  // 이미지 파일에서 단어 추출
   Future<List<WordEntry>> extractWordsFromImage(File imageFile) async {
-    // 이 함수는 이제 사용량 체크를 하지 않음 - 상위 프로세스에서 처리
     try {
-      // API 키 가져오기 (보호된 방식)
+      // API 키 가져오기
       final apiKey = ApiKeyUtils.getApiKey();
       print(
           'OpenAIVisionService: API 키 상태: ${apiKey.isEmpty ? "비어 있음" : "설정됨"}');
@@ -26,9 +25,9 @@ class OpenAIVisionService {
       final bytes = await imageFile.readAsBytes();
       final base64Image = base64Encode(bytes);
 
-      // OpenAI API 요청 본문 준비 - 프롬프트 개선
+      // OpenAI API 요청 본문 준비 - 향상된 프롬프트
       final payload = jsonEncode({
-        "model": AppConstants.openAiModel, // 환경설정에서 정의된 모델
+        "model": AppConstants.openAiModel,
         "messages": [
           {
             "role": "user",
@@ -36,39 +35,39 @@ class OpenAIVisionService {
               {
                 "type": "text",
                 "text": """
-                이 이미지는 영어 단어와 한국어 뜻이 나열된 영어 단어장입니다. 
-                이미지에서 영어 단어와 그 의미를 추출해주세요.
+                이 이미지는 영어 단어장입니다. 영어 단어와 한국어 뜻, 그리고 가능한 경우 발음 기호, 예문, 관련 구문이 포함되어 있습니다.
+                이미지의 모든 정보를 정확하게 추출해주세요.
                 
-                다음 정보를 각 단어별로 추출해주세요:
-                1. 영어 단어 (word)
-                2. 발음 기호가 있다면 발음 기호 (pronunciation) - 없으면 빈 문자열
-                3. 한국어 뜻 (meaning)
-                4. 영어 예문이 있다면 예문 (examples) - 없으면 빈 배열
-                5. 기출 표현이나 관련 구문이 있다면 (commonPhrases) - 없으면 빈 배열
+                각 단어별로 다음 정보를 정확히 추출해 주세요:
+                1. 영어 단어 (word) - 필수
+                2. 발음 기호 (pronunciation) - 괄호 안에 있는 발음 기호나 [səbˈstænʃəli]와 같은 형태로 표기된 발음 기호를 추출해주세요. 없으면 빈 문자열로 설정.
+                3. 한국어 뜻 (meaning) - 필수
+                4. 영어 예문 (examples) - 예문이 있을 경우 전체 문장을 추출하고, 각 예문별로 배열 요소로 분리해주세요. 
+                   - 예문에 한국어 번역이 같이 있다면 "영어 예문 - 한국어 번역" 형태로 함께 추출해주세요.
+                   - 없으면 빈 배열로 설정.
+                5. 관련 구문/기출 표현 (commonPhrases) - 단어와 관련된 구문, 숙어, 콜로케이션 등을 추출해주세요.
+                   - 각 구문별로 배열 요소로 분리하고, 구문에 한국어 번역이 있다면 "영어 구문 - 한국어 번역" 형태로 함께 추출해주세요.
+                   - 없으면 빈 배열로 설정.
                 
                 응답은 다음 JSON 형식으로 반환해주세요:
                 [
                   {
                     "word": "substantially",
-                    "pronunciation": "",
+                    "pronunciation": "[səbˈstænʃəli]",
                     "meaning": "실질적으로, 상당히",
-                    "examples": [],
-                    "commonPhrases": []
-                  },
-                  {
-                    "word": "significantly",
-                    "pronunciation": "",
-                    "meaning": "상당히, 의미 있게",
-                    "examples": [],
-                    "commonPhrases": []
+                    "examples": ["The new policy has substantially changed how we operate. - 새로운 정책은 우리의 운영 방식을 실질적으로 변화시켰다."],
+                    "commonPhrases": ["substantially different - 실질적으로 다른", "substantially increase - 상당히 증가하다"]
                   },
                   ...
                 ]
                 
-                중요: 이미지에 보이는 모든 영어 단어와 한국어 뜻 쌍을 추출해주세요.
-                영어 단어가 없거나 한국어 뜻이 없는 경우는 생략합니다.
-                발음 기호가 있으면 정확하게 추출해주세요.
-                발음 기호가 없는 경우 pronunciation은 빈 문자열로 설정합니다.
+                중요 지침:
+                - 이미지에 있는 모든 영어 단어와 한국어 뜻을 빠짐없이 추출해주세요.
+                - 영어 단어와 한국어 뜻은 반드시 포함되어야 합니다. 둘 중 하나라도 없는 경우는 리스트에서 제외해주세요.
+                - 발음 기호는 정확하게 추출하고, 기호가 없는 경우 빈 문자열로 설정해주세요.
+                - 예문과 관련 구문이 있는 경우 완전한 문장/구문으로 추출하고, 한국어 번역이 있다면 함께 추출해주세요.
+                - 단어장에 나타난 모든 정보를 최대한 정확하게 추출해 주세요.
+                - 이미지가 기울어져 있거나 품질이 좋지 않더라도 최대한 텍스트를 정확히 인식해주세요.
                 """
               },
               {
@@ -91,7 +90,7 @@ class OpenAIVisionService {
         body: payload,
       );
 
-      // 응답 처리 - 명시적으로 UTF-8 디코딩
+      // 응답 처리
       if (response.statusCode == 200) {
         // UTF-8 인코딩 처리를 명시적으로 적용
         final String decodedResponse = utf8.decode(response.bodyBytes);
@@ -122,17 +121,17 @@ class OpenAIVisionService {
       }
     } catch (e) {
       print('단어 추출 중 오류 발생: $e');
-      rethrow; // 원래 오류 다시 던지기
+      rethrow;
     }
   }
 
-  // 문자열에서 JSON 부분만 추출 (기존 메서드)
+  // 문자열에서 JSON 부분만 추출 (개선된 메서드)
   String _extractJsonFromString(String text) {
-    // JSON 배열 시작과 끝 찾기 (더 견고한 방식)
+    // JSON 배열 시작과 끝 찾기
     final startIndex = text.indexOf('[');
     if (startIndex == -1) return '[]'; // JSON 배열 시작을 찾지 못한 경우
 
-    // 중괄호 계수를 사용하여 JSON 텍스트 경계 찾기
+    // 괄호 균형을 맞추어 JSON 끝 찾기
     int bracketCount = 0;
     int endIndex = text.length - 1;
 
@@ -151,7 +150,7 @@ class OpenAIVisionService {
     // JSON 부분만 추출
     try {
       final jsonPart = text.substring(startIndex, endIndex);
-      // 유효성 테스트 (파싱 가능한지 확인)
+      // 유효성 테스트
       jsonDecode(jsonPart);
       return jsonPart;
     } catch (e) {
@@ -161,8 +160,15 @@ class OpenAIVisionService {
       try {
         // 괄호 균형이 맞지 않는 경우 처리
         var attemptFix = text.substring(startIndex);
-        if (!attemptFix.endsWith(']')) {
+
+        // 열린 괄호와 닫힌 괄호 개수 확인
+        int openBrackets = attemptFix.split('[').length - 1;
+        int closeBrackets = attemptFix.split(']').length - 1;
+
+        // 닫는 괄호가 부족한 경우 추가
+        while (openBrackets > closeBrackets) {
           attemptFix += ']';
+          closeBrackets++;
         }
 
         // 테스트
@@ -176,30 +182,34 @@ class OpenAIVisionService {
     }
   }
 
-  // JSON을 WordEntry 객체로 변환 (기존 메서드)
+  // JSON을 WordEntry 객체로 변환 (개선된 메서드)
   WordEntry _parseWordJson(Map<String, dynamic> json) {
-    // 필드가 없을 경우 기본값 제공
+    // 기본 필드 추출
     final word = json['word'] ?? '';
     final pronunciation = json['pronunciation'] ?? '';
     final meaning = json['meaning'] ?? '';
 
-    // 예문과 관용구는 배열로 처리
+    // 예문 처리
     List<String> examples = [];
     if (json['examples'] != null) {
       if (json['examples'] is List) {
-        examples = List<String>.from(json['examples']);
-      } else if (json['examples'] is String) {
-        // 문자열인 경우 콤마로 분리
-        examples = [json['examples'] as String];
+        examples =
+            List<String>.from(json['examples'].map((e) => e?.toString() ?? ''));
+      } else if (json['examples'] is String &&
+          json['examples'].toString().isNotEmpty) {
+        examples = [json['examples'].toString()];
       }
     }
 
+    // 관련 구문 처리
     List<String> commonPhrases = [];
     if (json['commonPhrases'] != null) {
       if (json['commonPhrases'] is List) {
-        commonPhrases = List<String>.from(json['commonPhrases']);
-      } else if (json['commonPhrases'] is String) {
-        commonPhrases = [json['commonPhrases'] as String];
+        commonPhrases = List<String>.from(
+            json['commonPhrases'].map((e) => e?.toString() ?? ''));
+      } else if (json['commonPhrases'] is String &&
+          json['commonPhrases'].toString().isNotEmpty) {
+        commonPhrases = [json['commonPhrases'].toString()];
       }
     }
 
